@@ -4,26 +4,26 @@
 import numpy as np
 import sys, os, copy, time
 import yaml
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 from tensorboardX import SummaryWriter
 from pyDOE import lhs
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from torch.nn import Linear
-import torch.nn as nn
-import torch.nn.functional as F
+# from torch.nn import Linear
+# import torch.nn as nn
+# import torch.nn.functional as F
 
 import gpytorch
-from gpytorch.means import ConstantMean
-from gpytorch.kernels import RBFKernel, ScaleKernel, LinearKernel
-from gpytorch.variational import VariationalStrategy, CholeskyVariationalDistribution
-from gpytorch.distributions import MultivariateNormal
-from gpytorch.models import AbstractVariationalGP, GP
-from gpytorch.mlls import VariationalELBO, AddedLossTerm
-from gpytorch.likelihoods import GaussianLikelihood, BernoulliLikelihood
-from gpytorch.models.deep_gps import AbstractDeepGPLayer, AbstractDeepGP, DeepLikelihood
+# from gpytorch.means import ConstantMean
+# from gpytorch.kernels import RBFKernel, ScaleKernel, LinearKernel
+# from gpytorch.variational import VariationalStrategy, CholeskyVariationalDistribution
+# from gpytorch.distributions import MultivariateNormal
+# from gpytorch.models import AbstractVariationalGP, GP
+from gpytorch.mlls import VariationalELBO#, AddedLossTerm
+# from gpytorch.likelihoods import GaussianLikelihood, BernoulliLikelihood
+# from gpytorch.models.deep_gps import AbstractDeepGPLayer, AbstractDeepGP, DeepLikelihood
 
 from pyTrajectoryUtils.pyTrajectoryUtils.utils import *
 from .models import *
@@ -481,24 +481,24 @@ class MFBOAgentBase():
                     self.create_model(num_epochs=self.iter_create_model)
                     self.compute_next_point_cand()
                 except RuntimeError as e:
-                    if 'out of memory' in str(e):
-                        print('| WARNING: ran out of memory, retrying batch')
-                        for p in self.model.parameters():
-                            if p.grad is not None:
-                                del p.grad  # free some memory
-                        torch.cuda.empty_cache()
-                        self.create_model(num_epochs=self.iter_create_model)
-                        self.compute_next_point_cand()
-                    elif 'cholesky_cuda' in str(e):
-                        print('| WARNING: cholesky_cuda')                        
-                        if hasattr(self, 'clf'):
-                            del self.clf                        
-                        if hasattr(self, 'feature_model'):
-                            del self.feature_model
-                        self.create_model()
-                        self.compute_next_point_cand()
-                    else:
-                        raise e
+                    # if 'out of memory' in str(e):
+                    #     print('| WARNING: ran out of memory, retrying batch')
+                    #     for p in self.model.parameters():
+                    #         if p.grad is not None:
+                    #             del p.grad  # free some memory
+                    #     torch.cuda.empty_cache()
+                    #     self.create_model(num_epochs=self.iter_create_model)
+                    #     self.compute_next_point_cand()
+                    # elif 'cholesky_cuda' in str(e):
+                    #     print('| WARNING: cholesky_cuda')                        
+                    #     if hasattr(self, 'clf'):
+                    #         del self.clf                        
+                    #     if hasattr(self, 'feature_model'):
+                    #         del self.feature_model
+                    #     self.create_model()
+                    #     self.compute_next_point_cand()
+                    # else:
+                    raise e
                 self.append_next_point()
                 if plot:
                     prefix = self.model_prefix.split("/")[1]+"_"+str(self.rand_seed)
@@ -628,13 +628,13 @@ class ActiveMFDGP(MFBOAgentBase):
         self.batch_size = kwargs.get('gpu_batch_size', 256)
 
     def create_model(self, num_epochs=500):
-        self.train_x_L = torch.tensor(self.X_L).float().cuda()
-        self.train_y_L = torch.tensor(self.Y_L).float().cuda()
+        self.train_x_L = torch.tensor(self.X_L).float()#.cuda()
+        self.train_y_L = torch.tensor(self.Y_L).float()#.cuda()
         self.train_dataset_L = TensorDataset(self.train_x_L, self.train_y_L)
         self.train_loader_L = DataLoader(self.train_dataset_L, batch_size=self.batch_size, shuffle=True)
 
-        self.train_x_H = torch.tensor(self.X_H).float().cuda()
-        self.train_y_H = torch.tensor(self.Y_H).float().cuda()
+        self.train_x_H = torch.tensor(self.X_H).float()#.cuda()
+        self.train_y_H = torch.tensor(self.Y_H).float()#.cuda()
         self.train_dataset_H = TensorDataset(self.train_x_H, self.train_y_H)
         self.train_loader_H = DataLoader(self.train_dataset_H, batch_size=self.batch_size, shuffle=True)
         
@@ -642,7 +642,7 @@ class ActiveMFDGP(MFBOAgentBase):
         train_y = [self.train_y_L, self.train_y_H]
         
         if not hasattr(self, 'clf'):
-            self.clf = MFDeepGPC(train_x, train_y, num_inducing=128).cuda()
+            self.clf = MFDeepGPC(train_x, train_y, num_inducing=128)#.cuda()
 
         optimizer = torch.optim.Adam([
             {'params': self.clf.parameters()},
@@ -693,7 +693,7 @@ class ActiveMFDGP(MFBOAgentBase):
             self.X_cand = self.X_cand[(np.min(self.X_cand[:,:self.t_dim]-self.lb_i,axis=1)>=0) \
                                                      & (np.max(self.X_cand[:,:self.t_dim]-self.ub_i,axis=1)<=0),:]
         
-        test_x = torch.tensor(self.X_cand).float().cuda()
+        test_x = torch.tensor(self.X_cand).float()#.cuda()
         test_dataset = TensorDataset(test_x)
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -720,7 +720,7 @@ class ActiveMFDGP(MFBOAgentBase):
         return mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean
     
     def forward_test(self):
-        test_x_L = torch.tensor(self.X_test).float().cuda()
+        test_x_L = torch.tensor(self.X_test).float()#.cuda()
         test_dataset_L = TensorDataset(test_x_L)
         test_loader_L = DataLoader(test_dataset_L, batch_size=self.batch_size, shuffle=False)
 

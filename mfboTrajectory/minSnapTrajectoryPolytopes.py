@@ -4,21 +4,21 @@
 import os, sys
 import copy
 import numpy as np
-import pandas as pd
+# import pandas as pd
 import scipy
-from scipy import optimize
+# from scipy import optimize
 from pyDOE import lhs
-import h5py
-import yaml
-import matplotlib.pyplot as plt
-from itertools import cycle
-from mpl_toolkits.mplot3d import Axes3D
+# import h5py
+# import yaml
+# import matplotlib.pyplot as plt
+# from itertools import cycle
+# from mpl_toolkits.mplot3d import Axes3D
 from cvxpy import *
 import cvxpy as cp
-import plotly
+# import plotly
 import plotly.graph_objects as go
 
-from pyTrajectoryUtils.pyTrajectoryUtils.quadModel import QuadModel
+# from pyTrajectoryUtils.pyTrajectoryUtils.quadModel import QuadModel
 from pyTrajectoryUtils.pyTrajectoryUtils.utils import *
 from pyTrajectoryUtils.pyTrajectoryUtils.minSnapTrajectory import MinSnapTrajectory
 
@@ -609,13 +609,17 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                     yaw_mode=0, flag_run_sim=False, \
                     flag_fixed_end_point=True, \
                     flag_fixed_point=False, flag_return_snap=False):
+        """
+        Returns:
+            t_set_new: t_set*alpha_set
+        """
         
-        flag_update_points = False        
+        # flag_update_points = False        
         if np.any(alpha_set==None):
             alpha_set=1.0*np.ones_like(t_set)
         
-        if alpha_set.shape[0] > t_set.shape[0] and flag_fixed_point:
-            flag_update_points = True
+        # if alpha_set.shape[0] > t_set.shape[0] and flag_fixed_point:
+        #     flag_update_points = True
         
         pos_yaw_obj = lambda x: self.snap_acc_obj(
             t_set=x, points=points, plane_pos_set=plane_pos_set, \
@@ -1189,14 +1193,14 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             
         return yaw_ref
     
-    def get_alpha_matrix(self, alpha, N_wp):
+    def get_alpha_matrix(self, alpha, N_wp) -> np.array:
         T_alpha = np.diag(self.generate_basis(1./alpha,self.N_DER-1,0))
         T_alpha_all = np.zeros((self.N_DER*N_wp,self.N_DER*N_wp))
         for i in range(N_wp):
             T_alpha_all[i*self.N_DER:(i+1)*self.N_DER,i*self.N_DER:(i+1)*self.N_DER] = T_alpha
         return T_alpha_all
 
-    def get_alpha_matrix_yaw(self, alpha, N_wp):
+    def get_alpha_matrix_yaw(self, alpha, N_wp) -> np.array:
         T_alpha = np.diag(self.generate_basis(1./alpha,self.N_DER_YAW-1,0))
         T_alpha_all = np.zeros((self.N_DER_YAW*N_wp,self.N_DER_YAW*N_wp))
         for i in range(N_wp):
@@ -1204,6 +1208,15 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         return T_alpha_all
     
     def optimize_alpha(self, points, t_set, d_ordered, d_ordered_yaw, alpha_scale=1.0, sanity_check_t=None, flag_return_alpha=False):
+        """Scales down obtained time allocation while ensuring feasibility.
+
+        Returns:
+            t_set: np array
+            d_ordered: square np array of len self.N_DER*N_wp 
+            d_ordered_yaw: square np array of len self.N_DER*N_wp 
+            alpha (optional): float
+        """
+        print("start optimize_alpha")
         if sanity_check_t == None:
             sanity_check_t = self.sanity_check
 
@@ -1220,7 +1233,9 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         else:
             d_ordered_yaw_ret = None
         
+        # increase alpha until flight is successful
         while True:
+            print("loop 1")
             t_set_opt = t_set * alpha
             d_ordered_opt = self.get_alpha_matrix(alpha,N_wp).dot(d_ordered)
             if np.all(d_ordered_yaw != None):
@@ -1228,12 +1243,17 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             else:
                 d_ordered_yaw_opt = None
             
+            # sanity check runs uav sim
+            # if it crashes, increase time allocation
             if not sanity_check_t(t_set_opt, d_ordered_opt, d_ordered_yaw_opt):
                 alpha += 1.0
             else:
                 break
             
+        # decrease alpha
         while True:
+            print("loop 2")
+            print(f"alpha = {alpha}, dalpha={dalpha}")
             alpha_tmp = alpha - dalpha
             t_set_opt = t_set * alpha_tmp
             d_ordered_opt = self.get_alpha_matrix(alpha_tmp,N_wp).dot(d_ordered)
@@ -1242,21 +1262,23 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             else:
                 d_ordered_yaw_opt = None
             
+            # if it crashes, decrease delta_alpha and try again
             if not sanity_check_t(t_set_opt, d_ordered_opt, d_ordered_yaw_opt):
                 dalpha *= 0.1
+            # if it is successful, set alpha to new smaller value and repeat
             else:
                 alpha = alpha_tmp
                 t_set_ret = t_set_opt
                 d_ordered_ret = d_ordered_opt
                 d_ordered_yaw_ret = d_ordered_yaw_opt
             
+            # repeat until time is small (ie alpha is small), or cannot be improved further (dalpha is small)
             if dalpha < 1e-5 or alpha < 1e-5:
-#                 print("Optimize alpha: {}".format(alpha))
                 break
         
-        t_set = t_set_ret * alpha_scale
-        d_ordered = self.get_alpha_matrix(alpha_scale,N_wp).dot(d_ordered_ret)
-        if np.all(d_ordered_yaw != None):
+        t_set = t_set_ret * alpha_scale  # times scaled by alpha_scale (??)
+        d_ordered = self.get_alpha_matrix(alpha_scale,N_wp).dot(d_ordered_ret)  # list of positions
+        if np.all(d_ordered_yaw != None):  # list of yaw angles
             d_ordered_yaw = self.get_alpha_matrix_yaw(alpha_scale,N_wp).dot(d_ordered_yaw_ret)
         else:
             d_ordered_yaw = None

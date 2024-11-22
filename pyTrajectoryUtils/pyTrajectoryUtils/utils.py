@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os, sys, copy, yaml
-from os import path
+import os
+import yaml
 import numpy as np
 import pandas as pd
 from scipy.special import factorial
 from scipy.special import comb, perm
-from multiprocessing import Pool, Pipe, TimeoutError, Process
+from multiprocessing import Pipe, Process
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -66,7 +66,7 @@ def inv_quat(q):
 
 def vecvec2quat(vec1, vec2):
     quat = np.zeros(4)
-    quat[0] = np.sqrt((vec1.dot(vec1))*(vec2.dot(vec2))) + vec1.dot(vec2);
+    quat[0] = np.sqrt((vec1.dot(vec1))*(vec2.dot(vec2))) + vec1.dot(vec2)
 
     if quat[0] < 1e-6:
         quat[0] = 0.
@@ -75,13 +75,13 @@ def vecvec2quat(vec1, vec2):
             quat[2] = vec1[0]
             quat[3] = 0.
         else:
-            quat[1] = 0.;
-            quat[2] = -vec1[2];
-            quat[3] = vec1[1];
+            quat[1] = 0.
+            quat[2] = -vec1[2]
+            quat[3] = vec1[1]
     else:
-        quat[1] = vec1[1]*vec2[2] - vec1[2]*vec2[1];
-        quat[2] = vec1[2]*vec2[0] - vec1[0]*vec2[2];
-        quat[3] = vec1[0]*vec2[1] - vec1[1]*vec2[0];
+        quat[1] = vec1[1]*vec2[2] - vec1[2]*vec2[1]
+        quat[2] = vec1[2]*vec2[0] - vec1[0]*vec2[2]
+        quat[3] = vec1[0]*vec2[1] - vec1[1]*vec2[0]
     quat_norm = np.sqrt(quat[0]**2+quat[1]**2+quat[2]**2+quat[3]**2)
     quat /= quat_norm
     return quat
@@ -181,12 +181,12 @@ def ne2en(x):
         raise ValueError
 
 def get_waypoints(name_yaml, name_traj, flag_t_set=False):
-    if path.exists(name_yaml):
+    if os.path.exists(name_yaml):
         file_path = name_yaml
     else:
         curr_path = os.path.dirname(os.path.abspath(__file__))
         file_path = curr_path+"/../waypoints/{}.yaml".format(name_yaml)
-        if not path.exists(file_path):
+        if not os.path.exists(file_path):
             print("No such file or directory: {} or {}".format(name_yaml,file_path))
             raise(yaml.YAMLError)
     with open(file_path, 'r') as stream:

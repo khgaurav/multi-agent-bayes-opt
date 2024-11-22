@@ -18,10 +18,10 @@ RUN apt-get update && apt-get install -y \
   vim \
   nano
 
-RUN python3.6 -m pip install -U virtualenv jupyter
+# RUN python3.6 -m pip install -U virtualenv jupyter
 
-ENTRYPOINT jupyter notebook --generate-config && \
-    echo 'c.NotebookApp.ip="127.0.0.1"' >> /root/.jupyter/jupyter_notebook_config.py && \
-    echo 'c.NotebookApp.allow_root = True' >> /root/.jupyter/jupyter_notebook_config.py && \
-    cd /root/mfboTrajectory && \
-    /bin/bash
+# ENTRYPOINT jupyter notebook --generate-config && \
+#     echo 'c.NotebookApp.ip="127.0.0.1"' >> /root/.jupyter/jupyter_notebook_config.py && \
+#     echo 'c.NotebookApp.allow_root = True' >> /root/.jupyter/jupyter_notebook_config.py && \
+#     cd /root/mfboTrajectory && \
+#     /bin/bash

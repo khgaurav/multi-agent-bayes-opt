@@ -2,13 +2,13 @@
 # coding: utf-8
 
 import numpy as np
-import os, sys, time, copy
-import yaml, h5py, shutil
-import scipy
+# import os, sys, time, copy
+# import yaml, h5py, shutil
+# import scipy
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
-from os import path
-from pyDOE import lhs
+# from matplotlib.ticker import FormatStrFormatter
+# from os import path
+# from pyDOE import lhs
 
 from pyTrajectoryUtils.pyTrajectoryUtils.utils import *
 from pyTrajectoryUtils.pyTrajectoryUtils.minSnapTrajectory import MinSnapTrajectory

@@ -1,23 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os, sys
+import sys
 import copy
+
 import numpy as np
-import pandas as pd
-import scipy
-from scipy import optimize
 from pyDOE import lhs
-import h5py
-import yaml
-import matplotlib.pyplot as plt
-from itertools import cycle
-from mpl_toolkits.mplot3d import Axes3D
+from scipy.optimize import fmin_l_bfgs_b
 
 from .quadModel import QuadModel
 from .utils import *
 from .trajectorySimulation import TrajectorySimulation
-import cvxpy as cp
 
 class MinSnapTrajectory(BaseTrajFunc):
     def __init__(self, *args, **kwargs):
@@ -553,7 +546,7 @@ class MinSnapTrajectory(BaseTrajFunc):
         for i in range(t_set.shape[0]):
             bounds.append((0.001, 1000.0))
         
-        res_x, res_f, res_d = scipy.optimize.fmin_l_bfgs_b(\
+        res_x, res_f, res_d = fmin_l_bfgs_b(\
                                     f_obj, x0=t_set, bounds=bounds, \
                                     approx_grad=True, epsilon=1e-4, maxiter=MAX_ITER, \
                                     iprint=1)

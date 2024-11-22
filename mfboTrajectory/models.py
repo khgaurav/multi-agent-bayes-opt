@@ -2,27 +2,27 @@
 # coding: utf-8
 
 import numpy as np
-import sys, os
-from matplotlib import pyplot as plt
-from pyDOE import lhs
+# import sys, os
+# from matplotlib import pyplot as plt
+# from pyDOE import lhs
 
 import torch
-from torch.utils.data import TensorDataset, DataLoader
-from torch.nn import Linear
-import torch.nn as nn
-import torch.nn.functional as F
+# from torch.utils.data import TensorDataset, DataLoader
+# from torch.nn import Linear
+# import torch.nn as nn
+# import torch.nn.functional as F
 
 import gpytorch
 from gpytorch.means import ConstantMean
 from gpytorch.kernels import RBFKernel, ScaleKernel, LinearKernel
 from gpytorch.variational import VariationalStrategy, CholeskyVariationalDistribution
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
-from gpytorch.models import AbstractVariationalGP, GP
-from gpytorch.mlls import VariationalELBO, AddedLossTerm
+# from gpytorch.models import AbstractVariationalGP, GP
+# from gpytorch.mlls import VariationalELBO, AddedLossTerm
 from gpytorch.likelihoods import GaussianLikelihood, BernoulliLikelihood, SoftmaxLikelihood
 from gpytorch.models.deep_gps import AbstractDeepGPLayer, AbstractDeepGP, DeepLikelihood
-from gpytorch.lazy import BlockDiagLazyTensor, lazify
-from scipy.special import erf, expit
+# from gpytorch.lazy import BlockDiagLazyTensor, lazify
+# from scipy.special import erf, expit
 
 from pyTrajectoryUtils.pyTrajectoryUtils.utils import *
 
@@ -89,8 +89,8 @@ class MFDeepGPLayer(AbstractDeepGPLayer):
             )
     
     def covar(self, x):
-        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long().cuda())
-        x_prev = torch.index_select(x, -1, torch.arange(self.prev_dims).long().cuda())
+        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long())#.cuda())
+        x_prev = torch.index_select(x, -1, torch.arange(self.prev_dims).long())#.cuda())
         covar_x = self.covar_module(x_input)
         if self.prev_dims > 0:
             k_corr = self.covar_module_corr(x_input)
@@ -104,7 +104,7 @@ class MFDeepGPLayer(AbstractDeepGPLayer):
 
     def forward(self, x):
         # https://github.com/amzn/emukit/blob/master/emukit/examples/multi_fidelity_dgp/multi_fidelity_deep_gp.py
-        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long().cuda())
+        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long())#.cuda())
         mean_x = self.mean_module(x_input) # self.linear_layer(x).squeeze(-1)
         covar_x = self.covar(x)
             
@@ -143,12 +143,12 @@ class MFDeepGPC(AbstractDeepGP):
         # Generate Inducing points - TODO check higher fidelity inducing points
         train_z = []
         
-        i_z = torch.randperm(train_x[0].size(0)).cuda()[:num_inducing]
+        i_z = torch.randperm(train_x[0].size(0))[:num_inducing]
         z_low = train_x[0][i_z, :]
         setattr(self, 'train_z_' + str(0), z_low)
         train_z.append(z_low)
         for i in range(1,num_fidelity):
-            i_z_low = torch.randperm(train_x[i-1].size(0)).cuda()[:num_inducing]
+            i_z_low = torch.randperm(train_x[i-1].size(0))[:num_inducing]
             z_high = torch.cat([train_x[i-1][i_z_low, :], train_y[i-1][i_z_low].unsqueeze(-1)], axis=1).unsqueeze(0)
             setattr(self, 'train_z_' + str(i), z_high)
             train_z.append(z_high)

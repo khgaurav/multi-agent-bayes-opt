@@ -35,10 +35,11 @@ if __name__ == "__main__":
     parser.set_defaults(flag_switch_gpu=False)
     args = parser.parse_args()
 
-    if args.flag_switch_gpu:
-        torch.cuda.set_device(1)
-    else:
-        torch.cuda.set_device(0)
+    # if args.flag_switch_gpu:
+    #     torch.cuda.set_device(1)
+    # else:
+    #     torch.cuda.set_device(0)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     yaw_mode = args.yaw_mode
     sample_name_ = sample_name[args.sample_idx]
