@@ -16,12 +16,16 @@ RUN apt-get update && apt-get install -y \
   cmake \
   tmux \
   vim \
-  nano
+  nano \
+  libffi6 \
+  libffi-dev\
+  libeigen3-dev
 
-# RUN python3.6 -m pip install -U virtualenv jupyter
-
-# ENTRYPOINT jupyter notebook --generate-config && \
-#     echo 'c.NotebookApp.ip="127.0.0.1"' >> /root/.jupyter/jupyter_notebook_config.py && \
-#     echo 'c.NotebookApp.allow_root = True' >> /root/.jupyter/jupyter_notebook_config.py && \
-#     cd /root/mfboTrajectory && \
-#     /bin/bash
+RUN python3.6 -m pip install "setuptools_scm<7.0.0" && \
+    python3.6 -m pip install "setuptools<=57.5.0" && \
+    python3.6 -m pip install -U virtualenv jupyter
+ENTRYPOINT jupyter notebook --generate-config && \
+    echo 'c.NotebookApp.ip="127.0.0.1"' >> /root/.jupyter/jupyter_notebook_config.py && \
+    echo 'c.NotebookApp.allow_root = True' >> /root/.jupyter/jupyter_notebook_config.py && \
+    cd /root/mfboTrajectory && \
+    /bin/bash
