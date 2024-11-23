@@ -7,7 +7,7 @@ docker run \
     --publish-all \
     --rm \
     # --gpus all\
-    --volume "${DIR}:/root/mfboTrajectory" \
+    --volume "${DIR}/../mfboTrajectory:/root/mfboTrajectory" \
     --name mfbo_traj \
     --privileged \
     --net "host" \

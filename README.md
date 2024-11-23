@@ -14,7 +14,7 @@ git clone https://github.com/rachel-lim/eece5550.git
 git submodule update --init --recursive
 docker build -t mfbo_traj .
 ./run_docker.sh
-python -m pip install 'setuptools<=57.5.0'
+python3.6 -m pip install 'setuptools<=57.5.0'
 source setup_venv/setup.bash
 python setup.py install
 ```
