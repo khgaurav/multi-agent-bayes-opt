@@ -4,14 +4,14 @@ list: ['traj_9', 'traj_10', 'traj_11', 'traj_12', 'traj_13', 'traj_14']
 traj_13:
     points:
         0: # coords of poly corners
-          - [0, 30]
-          - [10, 30]
-          - [10, 10]
+          - [0, 15]
+          - [5, 15]
+          - [5, 5]
           - [0, 0]
-          - [30, 10]
-          - [40, 0]
-          - [30, 30]
-          - [40, 30]
+          - [15, 5]
+          - [20, 0]
+          - [15, 15]
+          - [20, 15]
 
     polygon_set:
         0:
@@ -31,19 +31,19 @@ traj_13:
           - [0, 5]
 
     face_vertex:
-      - [0, 3.333, 25, 0]  # 0, x, y, poly num of initial point
-      - [0, 33.333, 25, 2]
-      - [0, 20, 6.667, 1]
-      - [1, 5, 5, 0, 3, 0, 2]  # 1, x, y, [point of one end of face], [point of other end of face]
-      - [1, 35, 5, 0, 4, 0, 5]
+      - [0, 3.3333, 12.5, 0]  # 0, x, y, poly num of initial point
+      - [0, 33.3333, 12.5, 2]
+      - [0, 10, 6.6666, 1]
+      - [1, 2.5, 2.5, 0, 3, 0, 2]  # 1, x, y, [point of one end of face], [point of other end of face]
+      - [1, 17.5, 2.5, 0, 4, 0, 5]
 
     polygon_path: [0, 3, 2, 4, 1]
 
     types: ["waypoint", "face_vertex", "waypoint", "face_vertex", "waypoint"]
 
-    initial_point: [3.333, 25]
+    initial_point: [3.3333, 12.5]
 
-    final_point: [33.333, 25]
+    final_point: [33.3333, 12.5]
 
     t_set: [10, 5, 5, 10]
 
