@@ -933,13 +933,14 @@ def load_polygon_path(filedir='poly_decomp', filename='result_polygon_path.yaml'
         polygon_path = yaml_in["polygon_path"]
         initial_point = yaml_in["initial_point"]
         final_point = yaml_in["final_point"]
+        types = yaml_in["types"]
         if flag_t_set:
             t_set = np.array(yaml_in["t_set"])
     
     if flag_t_set:
-        return points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point, t_set
+        return points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point, types, t_set
     else:
-        return points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point
+        return points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point, types
 
 #########################
 # Plot
@@ -1055,7 +1056,7 @@ def plot_polygon_path(points_set, polygon_set, \
 #  - Add polygon constraints
 def get_plane_pos_set(points_set, polygon_set, face_vertex, \
     polygon_path, initial_point, final_point, 
-    unit_height_t=1.):
+    unit_height_t, types):
 
     plane_pos_set = []
     plane_pos_set_corner_buffer = []
@@ -1063,26 +1064,40 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
     prev_output_edge = []
     prev_output_plane = []
     num_polygon_path = np.int((len(polygon_path)+1)/2)
-    for i in range(num_polygon_path):
-        if i == 0:
-            polygon_path_points.append( \
-                [face_vertex[polygon_path[0]][1].x, \
-                face_vertex[polygon_path[0]][1].y,0])
-        if i < num_polygon_path-1:
-            polygon_path_points.append( \
-                [face_vertex[polygon_path[2*i+1]][1].x, \
-                face_vertex[polygon_path[2*i+1]][1].y,0])
-        else:
-            polygon_path_points.append( \
-                [face_vertex[polygon_path[2*i]][1].x, \
-                face_vertex[polygon_path[2*i]][1].y,0])
+    waypoints = []
 
-        polygon_idx = face_vertex[polygon_path[2*i]][2]
-        if i < num_polygon_path-1:
-            output_edge_t = face_vertex[polygon_path[2*i+1]][2]
-            _p_idx = face_vertex[polygon_path[2*i]][2]
+    point_idx = np.where(np.array(types) != "face_vertex")[0]
+
+    for i in range(len(polygon_path)):
+        # if i == 0:
+        if types[i] in ["face_vertex", "waypoint"]:
+            polygon_path_points.append( \
+                [face_vertex[polygon_path[i]][1].x, \
+                face_vertex[polygon_path[i]][1].y,0])
+            waypoints.append(types[i] == "waypoint")
+        # if i < num_polygon_path-1:
+        #     polygon_path_points.append( \
+        #         [face_vertex[polygon_path[2*i+1]][1].x, \
+        #         face_vertex[polygon_path[2*i+1]][1].y,0])
+        # else:
+        #     polygon_path_points.append( \
+        #         [face_vertex[polygon_path[2*i]][1].x, \
+        #         face_vertex[polygon_path[2*i]][1].y,0])
+        
+        # if i < num_polygon_path-1:
+
+        if i not in point_idx:
+            continue
+
+        polygon_idx = face_vertex[polygon_path[i]][2]
+        
+        if i < len(point_idx)-1:
+            _p_idx = face_vertex[polygon_path[i]][2]
+            face_idx = types.index("face_vertex", i)
+            output_edge_t = face_vertex[polygon_path[face_idx]][2]
+
             edges_tmp = [[polygon_set[_p_idx][k],polygon_set[_p_idx][(k+1)%len(polygon_set[_p_idx])]] \
-                         for k, x in enumerate(polygon_set[_p_idx])]
+                            for k, x in enumerate(polygon_set[_p_idx])]
             if output_edge_t in edges_tmp:
                 output_edge = output_edge_t
             elif [output_edge_t[1], output_edge_t[0]] in edges_tmp:
@@ -1091,6 +1106,7 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
                 output_edge = None
         else:
             output_edge = None
+
         polygon_info_t = dict()
         polygon_info_t["input_plane"] = []
         polygon_info_t["constraints_plane"] = []
@@ -1181,7 +1197,8 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
                 polygon_info_single_t.append([via[0],via[1],unit_height_t])
                 polygon_info_t["corner_plane"].append(polygon_info_single_t)
 
-                _p_idx = face_vertex[polygon_path[2*(i-1)]][2]
+                last_face_idx = point_idx[point_idx<i][-1]
+                _p_idx = face_vertex[polygon_path[last_face_idx]][2]
                 edges_prev_t = [[polygon_set[_p_idx][k],polygon_set[_p_idx][(k+1)%len(polygon_set[_p_idx])]] \
                          for k, x in enumerate(polygon_set[_p_idx])]
                 _e_prev_idx = edges_prev_t.index([prev_output_edge[1],prev_output_edge[0]])
@@ -1197,7 +1214,8 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
                 polygon_info_single_t.append([via2[0],via2[1],unit_height_t])
                 plane_pos_set[-1]["corner_plane"].append(polygon_info_single_t)
 
-                _p_idx = face_vertex[polygon_path[2*(i+1)]][2]
+                next_face_idx = point_idx[point_idx>i][0]
+                _p_idx = face_vertex[polygon_path[next_face_idx]][2]
                 edges_next_t = [[polygon_set[_p_idx][k],polygon_set[_p_idx][(k+1)%len(polygon_set[_p_idx])]] \
                          for k, x in enumerate(polygon_set[_p_idx])]
                 _e_next_idx = edges_next_t.index([output_edge[1],output_edge[0]])
@@ -1260,7 +1278,7 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
         prev_output_plane = copy.deepcopy(polygon_info_t["output_plane"])
         if np.all(prev_output_plane != None):   
             prev_output_plane.reverse()
-    return plane_pos_set, polygon_path_points
+    return plane_pos_set, polygon_path_points, waypoints
 
 
 #########################
