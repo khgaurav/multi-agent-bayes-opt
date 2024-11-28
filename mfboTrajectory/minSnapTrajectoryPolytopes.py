@@ -1261,7 +1261,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
 
         # Optimizae alpha
         alpha = 2.0
-        dalpha = 0.1
+        dalpha = 10
         alpha_tmp = alpha
         t_set_ret = copy.deepcopy(t_set)
         d_ordered_ret = copy.deepcopy(d_ordered)
@@ -1312,7 +1312,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                 d_ordered_yaw_ret = d_ordered_yaw_opt
             
             # repeat until time is small (ie alpha is small), or cannot be improved further (dalpha is small)
-            if dalpha < 1e-5 or alpha < 1e-5:
+            if dalpha < 1e-3 or alpha < 1e-2:
                 break
         
         t_set = t_set_ret * alpha_scale  # times scaled by alpha_scale (??)
