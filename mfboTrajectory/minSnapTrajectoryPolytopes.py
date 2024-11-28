@@ -24,6 +24,11 @@ from pyTrajectoryUtils.pyTrajectoryUtils.minSnapTrajectory import MinSnapTraject
 
 class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
     def __init__(self, *args, **kwargs):
+        """
+        yaw_mode (int): The mode for yaw control.
+        qp_optimizer (str): The quadratic programming optimizer to use.
+        default_t_set_scale (float): The default scale for the time set. Default is 1.0.
+        """
         super().__init__(*args, **kwargs)
         self.yaw_mode = kwargs.get('yaw_mode', 0)
         self.qp_optimizer = kwargs.get('qp_optimizer', 'osqp')
@@ -452,7 +457,32 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                      flag_init_point=True, flag_fixed_point=False, \
                      flag_fixed_end_point=False, \
                      yaw_mode=0, kt=0, mu=1.0):
-        
+        """
+        Computes the snap acceleration objective for a given set of waypoints and time intervals.
+        Parameters:
+        t_set (numpy.ndarray): Array of time intervals between waypoints.
+        points (numpy.ndarray): Array of waypoints.
+        plane_pos_set (numpy.ndarray): Array of plane positions.
+        deg_init_min (int, optional): Minimum degree for initial conditions. Default is 0.
+        deg_init_max (int, optional): Maximum degree for initial conditions. Default is 4.
+        deg_end_min (int, optional): Minimum degree for end conditions. Default is 0.
+        deg_end_max (int, optional): Maximum degree for end conditions. Default is 0.
+        deg_init_yaw_min (int, optional): Minimum degree for initial yaw conditions. Default is 0.
+        deg_init_yaw_max (int, optional): Maximum degree for initial yaw conditions. Default is 4.
+        deg_end_yaw_min (int, optional): Minimum degree for end yaw conditions. Default is 0.
+        deg_end_yaw_max (int, optional): Maximum degree for end yaw conditions. Default is 0.
+        flag_init_point (bool, optional): Flag to indicate if the initial point is fixed. Default is True.
+        flag_fixed_point (bool, optional): Flag to indicate if intermediate points are fixed. Default is False.
+        flag_fixed_end_point (bool, optional): Flag to indicate if the end point is fixed. Default is False.
+        yaw_mode (int, optional): Mode for yaw calculation. Default is 0.
+        kt (float, optional): Weight for time intervals. Default is 0.
+        mu (float, optional): Weight for yaw objective. Default is 1.0.
+        Returns:
+        tuple: A tuple containing:
+            - res (float): The computed snap acceleration objective.
+            - d_ordered_ret (numpy.ndarray): The ordered derivatives for position.
+            - d_ordered_yaw_ret (numpy.ndarray): The ordered derivatives for yaw.
+        """
         pos_obj = lambda x: self.snap_obj( \
              x, points, plane_pos_set, waypoints, \
              deg_init_min=deg_init_min, deg_init_max=deg_init_max, \
@@ -633,8 +663,9 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             flag_fixed_end_point=flag_fixed_end_point, \
             flag_init_point=True, flag_fixed_point=flag_fixed_point, \
             yaw_mode=yaw_mode)
-        
+        # Scale time with alpha_set
         t_set_new = np.multiply(t_set, alpha_set)
+        # Calculate snap oh both position and yaw
         res, d_ordered, d_ordered_yaw = pos_yaw_obj(t_set_new)
         
         if flag_run_sim:
@@ -679,7 +710,10 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
     
     # run simulation with multiple loops & rampin
     def run_sim_loop(self, t_set, d_ordered, d_ordered_yaw, plane_pos_set, \
-                     N_loop=1, flag_debug=False, max_pos_err=2.0, max_col_err=0.1, N_trial=3):        
+                     N_loop=1, flag_debug=False, max_pos_err=2.0, max_col_err=0.1, N_trial=3):
+        """
+        
+        """        
         flag_loop = False
         N_wp = np.int(d_ordered.shape[0]/self.N_DER)
         N_POLY = t_set.shape[0]
