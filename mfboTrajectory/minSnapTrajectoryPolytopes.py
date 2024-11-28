@@ -188,7 +188,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
 
         return Mat_obj
     
-    def snap_obj(self, t_set, points, plane_pos_set, \
+    def snap_obj(self, t_set, points, plane_pos_set, waypoints,\
                  deg_init_min=0, deg_init_max=4, deg_end_min=0, deg_end_max=0, \
                  flag_init_point=True, flag_fixed_point=False, flag_fixed_end_point=False):
         
@@ -294,23 +294,26 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                     V_t_fixed = V_t[-1:,:]
                 else:
                     V_t_fixed = V_t[(p_ii+1)*self.N_POINTS:(p_ii+1)*self.N_POINTS+1,:]
-                if flag_fixed_point:
+                # if flag_fixed_point:
+                #     A = scipy.linalg.block_diag(V_t_fixed,V_t_fixed,V_t_fixed)
+                #     constraints.append(A*x == points[p_ii_n,:3])
+                # else:
+                #     if p_ii == len(plane_pos_set)-1:
+                #         if flag_fixed_end_point:
+                #             A = scipy.linalg.block_diag(V_t_fixed,V_t_fixed,V_t_fixed)
+                #             constraints.append(A*x == points[p_ii_n,:3])
+                #     else:
+                #         v0 = np.array(plane_pos_set[p_ii]["output_plane"][0])
+                #         v1 = np.array(plane_pos_set[p_ii]["output_plane"][1])
+                #         v2 = np.array(plane_pos_set[p_ii]["output_plane"][2])
+                #         V_norm = np.cross(v1-v0, v2-v0)*1.0
+                #         V_norm /= np.linalg.norm(V_norm)
+                #         V_bias = V_norm.dot(v0)                    
+                #         A = np.hstack([V_norm[0]*V_t_fixed,V_norm[1]*V_t_fixed,V_norm[2]*V_t_fixed])
+                #         constraints.append(A*x == V_bias)
+                if waypoints[p_ii] == True:
                     A = scipy.linalg.block_diag(V_t_fixed,V_t_fixed,V_t_fixed)
                     constraints.append(A*x == points[p_ii_n,:3])
-                else:
-                    if p_ii == len(plane_pos_set)-1:
-                        if flag_fixed_end_point:
-                            A = scipy.linalg.block_diag(V_t_fixed,V_t_fixed,V_t_fixed)
-                            constraints.append(A*x == points[p_ii_n,:3])
-                    else:
-                        v0 = np.array(plane_pos_set[p_ii]["output_plane"][0])
-                        v1 = np.array(plane_pos_set[p_ii]["output_plane"][1])
-                        v2 = np.array(plane_pos_set[p_ii]["output_plane"][2])
-                        V_norm = np.cross(v1-v0, v2-v0)*1.0
-                        V_norm /= np.linalg.norm(V_norm)
-                        V_bias = V_norm.dot(v0)                    
-                        A = np.hstack([V_norm[0]*V_t_fixed,V_norm[1]*V_t_fixed,V_norm[2]*V_t_fixed])
-                        constraints.append(A*x == V_bias)
 
             # Starting point constraints
             if flag_init_point:
@@ -443,7 +446,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             res = 1e10
         return res, d_ordered
     
-    def snap_acc_obj(self, t_set, points, plane_pos_set, \
+    def snap_acc_obj(self, t_set, points, plane_pos_set, waypoints,\
                      deg_init_min=0, deg_init_max=4, deg_end_min=0, deg_end_max=0, \
                      deg_init_yaw_min=0, deg_init_yaw_max=4, deg_end_yaw_min=0, deg_end_yaw_max=0, \
                      flag_init_point=True, flag_fixed_point=False, \
@@ -451,7 +454,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                      yaw_mode=0, kt=0, mu=1.0):
         
         pos_obj = lambda x: self.snap_obj( \
-             x, points, plane_pos_set, \
+             x, points, plane_pos_set, waypoints, \
              deg_init_min=deg_init_min, deg_init_max=deg_init_max, \
              deg_end_min=deg_end_min, deg_end_max=deg_end_max, \
              flag_fixed_end_point=flag_fixed_end_point,\
@@ -605,7 +608,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         
         return self.optimize_alpha(points_new, t_set, d_ordered, d_ordered_yaw, alpha_scale)
     
-    def update_traj(self, t_set, points, plane_pos_set, alpha_set=None, \
+    def update_traj(self, t_set, points, plane_pos_set, waypoints, alpha_set=None, \
                     yaw_mode=0, flag_run_sim=False, \
                     flag_fixed_end_point=True, \
                     flag_fixed_point=False, flag_return_snap=False):
@@ -622,7 +625,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         #     flag_update_points = True
         
         pos_yaw_obj = lambda x: self.snap_acc_obj(
-            t_set=x, points=points, plane_pos_set=plane_pos_set, \
+            t_set=x, points=points, plane_pos_set=plane_pos_set, waypoints=waypoints,\
             deg_init_min=0,deg_init_max=4, \
             deg_end_min=0,deg_end_max=2, \
             deg_init_yaw_min=0,deg_init_yaw_max=4, \
@@ -714,6 +717,8 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                     flag_update_poly = False
 
                 if flag_update_poly:
+                    print("p_ii")
+                    print(p_ii)
                     V_norm = np.zeros((len(plane_pos_set[p_ii]["constraints_plane"]),3))
                     V_bias = np.zeros(len(plane_pos_set[p_ii]["constraints_plane"]))
                     for i in range(len(plane_pos_set[p_ii]["constraints_plane"])):
@@ -1246,7 +1251,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             # sanity check runs uav sim
             # if it crashes, increase time allocation
             if not sanity_check_t(t_set_opt, d_ordered_opt, d_ordered_yaw_opt):
-                alpha += 1.0
+                alpha += 5.0
             else:
                 break
             
