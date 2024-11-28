@@ -751,8 +751,6 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                     flag_update_poly = False
 
                 if flag_update_poly:
-                    print("p_ii")
-                    print(p_ii)
                     V_norm = np.zeros((len(plane_pos_set[p_ii]["constraints_plane"]),3))
                     V_bias = np.zeros(len(plane_pos_set[p_ii]["constraints_plane"]))
                     for i in range(len(plane_pos_set[p_ii]["constraints_plane"])):
@@ -1261,7 +1259,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
 
         # Optimizae alpha
         alpha = 2.0
-        dalpha = 10
+        dalpha = 1
         alpha_tmp = alpha
         t_set_ret = copy.deepcopy(t_set)
         d_ordered_ret = copy.deepcopy(d_ordered)
@@ -1312,7 +1310,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                 d_ordered_yaw_ret = d_ordered_yaw_opt
             
             # repeat until time is small (ie alpha is small), or cannot be improved further (dalpha is small)
-            if dalpha < 1e-3 or alpha < 1e-2:
+            if dalpha < 1e-2 or alpha < 1e-2:
                 break
         
         t_set = t_set_ret * alpha_scale  # times scaled by alpha_scale (??)

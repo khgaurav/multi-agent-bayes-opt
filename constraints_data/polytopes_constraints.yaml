@@ -32,8 +32,8 @@ traj_13:
 
     face_vertex:
       - [0, 3.3333, 12.5, 0]  # 0, x, y, poly num of initial point
-      - [0, 33.3333, 12.5, 2]
-      - [0, 10, 6.6666, 1]
+      - [0, 18.3333, 12.5, 2]
+      - [0, 10, 1.6666, 1]
       - [1, 2.5, 2.5, 0, 3, 0, 2]  # 1, x, y, [point of one end of face], [point of other end of face]
       - [1, 17.5, 2.5, 0, 4, 0, 5]
 
@@ -43,7 +43,7 @@ traj_13:
 
     initial_point: [3.3333, 12.5]
 
-    final_point: [33.3333, 12.5]
+    final_point: [18.3333, 12.5]
 
     t_set: [10, 5, 5, 10]
 

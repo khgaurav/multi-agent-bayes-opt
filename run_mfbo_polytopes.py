@@ -106,8 +106,7 @@ if __name__ == "__main__":
                                                                np.ones_like(t_set_sta),
                                                                flag_fixed_point=False, 
                                                                flag_fixed_end_point=False)
-        print(t_set_sta)
-        print(d_ordered)
+
         print("Done generating initial trajectory")
         print("Start generating time optimized trajectory")
         t_set_sim, d_ordered, d_ordered_yaw, alpha_sim = poly.optimize_alpha(points,  
