@@ -447,3 +447,183 @@ class TrajectorySimulation(BaseTrajFunc):
             df.to_csv(os.path.join(save_dir,"log_{}.csv".format(save_idx)), sep=',', index=False)
         
         return
+
+    def run_simulation_for_multiple_drones(self, t_sets, d_ordereds, d_ordereds_yaw=None,
+                                               N_trial=1, max_pos_err=5.0, min_pos_err=0.5, 
+                                               max_yaw_err=15.0, min_yaw_err=5.0, 
+                                               freq_ctrl=200):
+            status_refs = []
+            for t_set, d_ordered in zip(t_sets, d_ordereds):
+                flag_loop = self.check_flag_loop(t_set, d_ordered)
+                dt = 1./freq_ctrl
+                total_time = np.sum(t_set)
+                cum_time = np.zeros(t_set.shape[0]+1)
+                cum_time[1:] = np.cumsum(t_set)
+                cum_time[0] = 0
+                N = np.int(np.floor(total_time/dt))
+                poly_idx = 0
+                t_array = total_time*np.array(range(N))/N
+                status_ref = np.zeros((N,20))
+                status_ref[:,0] = t_array
+                status_ref[:,1] = 1
+                T2_mat = np.diag(self.generate_basis(t_set[poly_idx], self.N_DER-1, 0))
+                der0 = T2_mat.dot(d_ordered[poly_idx*self.N_DER:(poly_idx+1)*self.N_DER,:])
+                der1 = T2_mat.dot(d_ordered[(poly_idx+1)*self.N_DER:(poly_idx+2)*self.N_DER,:])
+                if np.all(d_ordereds_yaw != None):
+                    T2_mat_yaw = np.diag(self.generate_basis(t_set[poly_idx], self.N_DER_YAW-1, 0))
+                    der0_yaw = T2_mat_yaw.dot(d_ordereds_yaw[poly_idx*self.N_DER_YAW:(poly_idx+1)*self.N_DER_YAW,:])
+                    der1_yaw = T2_mat_yaw.dot(d_ordereds_yaw[(poly_idx+1)*self.N_DER_YAW:(poly_idx+2)*self.N_DER_YAW,:])
+                for i in range(N):
+                    if t_array[i] > cum_time[poly_idx+1]:
+                        poly_idx += 1
+                        T2_mat = np.diag(self.generate_basis(t_set[poly_idx], self.N_DER-1, 0))
+                        der0 = T2_mat.dot(d_ordered[poly_idx*self.N_DER:(poly_idx+1)*self.N_DER,:])
+                        if flag_loop:
+                            poly_idx_next = (poly_idx+1)%(t_set.shape[0])
+                        else:
+                            poly_idx_next = poly_idx+1
+                        der1 = T2_mat.dot(d_ordered[poly_idx_next*self.N_DER:(poly_idx_next+1)*self.N_DER,:])
+                        if np.all(d_ordereds_yaw != None):
+                            T2_mat_yaw = np.diag(self.generate_basis(t_set[poly_idx], self.N_DER_YAW-1, 0))
+                            der0_yaw = T2_mat_yaw.dot(d_ordereds_yaw[poly_idx*self.N_DER_YAW:(poly_idx+1)*self.N_DER_YAW,:])
+                            der1_yaw = T2_mat_yaw.dot(d_ordereds_yaw[poly_idx_next*self.N_DER_YAW:(poly_idx_next+1)*self.N_DER_YAW,:])
+                    t_step = (t_array[i] - cum_time[poly_idx])/t_set[poly_idx]
+                    for der in range(5):
+                        v0, v1 = self.generate_single_point_matrix(t_step, der=der)
+                        status_ref[i,2+3*der:2+3*(der+1)] = (v0.dot(der0)+v1.dot(der1))/(t_set[poly_idx]**der)
+                    if np.all(d_ordereds_yaw != None):
+                        status_yaw_xy = np.zeros((1,3,2))
+                        for der in range(3):
+                            v0, v1 = self.generate_single_point_matrix_yaw(t_step, der=der)
+                            status_yaw_xy[:,der,:] = (v0.dot(der0_yaw)+v1.dot(der1_yaw))/(t_set[poly_idx]**der)
+                        status_ref[i,17:] = self.get_yaw_der(status_yaw_xy)[0,:]
+                status_refs.append(status_ref)
+            debug_array = self.simulation_core_multi(status_refs, N_trial=N_trial, 
+                                                     max_pos_err=max_pos_err, min_pos_err=min_pos_err, 
+                                                     max_yaw_err=max_yaw_err, min_yaw_err=min_yaw_err, 
+                                                     freq_ctrl=freq_ctrl)
+            return debug_array
+    
+    def simulation_core_multi(self, status_refs, N_trial=1,
+                                max_pos_err=5.0, min_pos_err=0.5, 
+                                max_yaw_err=15.0, min_yaw_err=5.0, 
+                                freq_ctrl=200, traj_ref_paths=None):
+        max_yaw_err = np.cos(max_yaw_err*np.pi/180.0)
+        min_yaw_err = np.cos(min_yaw_err*np.pi/180.0)
+        
+        max_time = 100
+        dt_micro_ctrl = np.int(1e6/freq_ctrl)
+        N = min(status_refs[0].shape[0], max_time*freq_ctrl)
+
+        debug_array = [dict() for i in range(N_trial)]
+
+        for trial in range(N_trial):
+            print("Flight #{}".format(trial))
+            pos_errs = [0, 0]
+            
+            traj_refs = [status_ref[0,:] for status_ref in status_refs]
+            for i, vehicle_id in enumerate(["uav1", "uav2"]):
+                self.env.set_state_vehicle(
+                    vehicle_id, 
+                    position=status_refs[i][0,2:5], 
+                    velocity=status_refs[i][0,5:8],
+                    attitude_euler_angle=np.array([0,0,status_refs[i][0,17]]))
+            
+            states_t = [self.env.get_state(vehicle_id) for vehicle_id in ["uav1", "uav2"]]
+
+            pos_arrays = [np.zeros((N,3)) for _ in range(2)]
+            vel_arrays = [np.zeros((N,3)) for _ in range(2)]
+            acc_arrays = [np.zeros((N,3)) for _ in range(2)]
+            att_arrays = [np.zeros((N,3)) for _ in range(2)]
+            att_q_arrays = [np.zeros((N,4)) for _ in range(2)]
+            raw_acc_arrays = [np.zeros((N,3)) for _ in range(2)]
+            raw_gyro_arrays = [np.zeros((N,3)) for _ in range(2)]
+            filtered_acc_arrays = [np.zeros((N,3)) for _ in range(2)]
+            filtered_gyro_arrays = [np.zeros((N,3)) for _ in range(2)]
+            ms_arrays = [np.zeros((N,4)) for _ in range(2)]
+            ms_c_arrays = [np.zeros((N,4)) for _ in range(2)]
+            time_array = np.zeros(N)
+            pos_err_arrays = [np.zeros(N) for _ in range(2)]
+            yaw_err_arrays = [np.zeros(N) for _ in range(2)]
+            failure_idxs = [-1, -1]
+            failure_start_idxs = [-1, -1]
+            failure_end_idxs = [-1, -1]
+
+            for it in range(N):
+                curr_time = np.int(1.0*(it+1)/freq_ctrl*1e6)
+
+                for i, vehicle_id in enumerate(["uav1", "uav2"]):
+                    traj_refs[i] = status_refs[i][it,2:]
+                    ms_c = self.controller.control_update(traj_refs[i], states_t[i]["position"], states_t[i]["velocity"], 
+                                                            states_t[i]["acceleration"], states_t[i]["attitude_euler_angle"], 
+                                                            states_t[i]["angular_velocity"], states_t[i]["angular_acceleration"], 
+                                                            1.0/freq_ctrl)
+                    self.env.proceed_motor_speed(vehicle_id, ms_c, 1.0/freq_ctrl)
+                    states_t[i] = self.env.get_state(vehicle_id)
+
+                    pos_arrays[i][it,:] = states_t[i]["position"]
+                    vel_arrays[i][it,:] = states_t[i]["velocity"]
+                    acc_arrays[i][it,:] = states_t[i]["acceleration"]
+                    att_arrays[i][it,:] = states_t[i]["attitude_euler_angle"]
+                    att_q_arrays[i][it,:] = states_t[i]["attitude"]
+                    raw_acc_arrays[i][it,:] = states_t[i]["acceleration_raw"]
+                    raw_gyro_arrays[i][it,:] = states_t[i]["gyroscope_raw"]
+                    filtered_acc_arrays[i][it,:] = states_t[i]["acceleration"]
+                    filtered_gyro_arrays[i][it,:] = states_t[i]["angular_velocity"]
+                    ms_arrays[i][it,:] = states_t[i]["motor_speed"]
+                    ms_c_arrays[i][it,:] = ms_c
+
+                    if it < N-1:
+                        pos_errs[i] = np.linalg.norm(status_refs[i][it+1,2:5]-states_t[i]["position"])
+                        yaw_err = max(np.cos(status_refs[i][it+1,17]-states_t[i]["attitude_euler_angle"][2]), 
+                                        np.cos(np.pi-status_refs[i][it+1,17]+states_t[i]["attitude_euler_angle"][2]))
+                        pos_err_arrays[i][it+1] = pos_errs[i]
+                        yaw_err_arrays[i][it+1] = np.arccos(yaw_err)
+
+                    if (pos_errs[i] > min_pos_err or yaw_err < min_yaw_err) and failure_start_idxs[i] == -1:
+                        failure_start_idxs[i] = it
+
+                    if (pos_errs[i] < min_pos_err and yaw_err > min_yaw_err) and failure_start_idxs[i] != -1:
+                        failure_start_idxs[i] = -1
+
+                    if pos_errs[i] > max_pos_err or yaw_err < max_yaw_err:
+                        print("Failed. Progress: {}%, Ref total time: {}".format(100.0*it/N, status_refs[i][-1,0]))
+                        failure_idxs[i] = it
+                        break
+
+                # Check for collision
+                if np.linalg.norm(states_t[0]["position"] - states_t[1]["position"]) < 1.0:  # Assuming 1 meter as collision threshold
+                    print("Collision detected between drones at time: {}".format(curr_time))
+                    failure_idxs[0] = it
+                    failure_idxs[1] = it
+                    break
+
+            for i in range(2):
+                debug_array[trial]["ref_{}".format(i+1)] = status_refs[i]
+                debug_array[trial]["time"] = time_array
+                debug_array[trial]["pos_{}".format(i+1)] = pos_arrays[i]
+                debug_array[trial]["vel_{}".format(i+1)] = vel_arrays[i]
+                debug_array[trial]["acc_{}".format(i+1)] = acc_arrays[i]
+                debug_array[trial]["att_{}".format(i+1)] = att_arrays[i]
+                debug_array[trial]["att_q_{}".format(i+1)] = att_q_arrays[i]
+                debug_array[trial]["acc_raw_{}".format(i+1)] = raw_acc_arrays[i]
+                debug_array[trial]["acc_lpf_{}".format(i+1)] = filtered_acc_arrays[i]
+                debug_array[trial]["gyro_raw_{}".format(i+1)] = raw_gyro_arrays[i]
+                debug_array[trial]["gyro_lpf_{}".format(i+1)] = filtered_gyro_arrays[i]
+                debug_array[trial]["ms_{}".format(i+1)] = ms_arrays[i]
+                debug_array[trial]["ms_c_{}".format(i+1)] = ms_c_arrays[i]
+                debug_array[trial]["failure_idx_{}".format(i+1)] = failure_idxs[i]
+                debug_array[trial]["failure_start_idx_{}".format(i+1)] = failure_start_idxs[i]
+                debug_array[trial]["failure_end_idx_{}".format(i+1)] = failure_end_idxs[i]
+                debug_array[trial]["pos_err_{}".format(i+1)] = pos_err_arrays[i]
+                debug_array[trial]["yaw_err_{}".format(i+1)] = yaw_err_arrays[i]
+
+                if pos_errs[i] < max_pos_err and yaw_err > max_yaw_err:
+                    if traj_ref_paths is not None:
+                        print("Succeeded. Total time: {}.\n - Traj path: {}".format(time_array[-1], traj_ref_paths[i]))
+                    else:
+                        print("Succeeded. Total time: {}.".format(time_array[-1]))        
+                print("Position error: {}/{}, Yaw error: {}/{}". \
+                        format(str(round(max(pos_err_arrays[i]),2)),max_pos_err, \
+                                str(round(max(yaw_err_arrays[i]),2)),str(round(np.arccos(max_yaw_err),2))))
+        return debug_array

@@ -31,6 +31,36 @@ from .trajSampler import TrajSampler, gaussian_sampler
 
 class MFBOAgentBase():
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the agent with given parameters.
+        Parameters:
+        - X_L (np.ndarray): Low-fidelity input data.
+        - Y_L (np.ndarray): Low-fidelity output data.
+        - X_H (np.ndarray): High-fidelity input data.
+        - Y_H (np.ndarray): High-fidelity output data.
+        - lb_i (np.ndarray): Lower bounds for input space.
+        - ub_i (np.ndarray): Upper bounds for input space.
+        - rand_seed (int): Random seed for reproducibility.
+        - C_L (np.ndarray): Low-fidelity cost data.
+        - C_H (np.ndarray): High-fidelity cost data.
+        - sampling_func_L (callable): Sampling function for low-fidelity data.
+        - sampling_func_H (callable): Sampling function for high-fidelity data.
+        - t_set_sim (np.ndarray): Time set for simulation.
+        - traj_wp_sampler_mean (float): Mean for trajectory waypoint sampler.
+        - traj_wp_sampler_var (float): Variance for trajectory waypoint sampler.
+        - delta_L (float): Delta parameter for low-fidelity data.
+        - delta_H (float): Delta parameter for high-fidelity data.
+        - beta (float): Beta parameter.
+        - iter_create_model (int): Number of iterations to create model.
+        - N_cand (int): Number of candidate samples.
+        - utility_mode (int): Mode for utility function.
+        - sampling_mode (int): Mode for sampling function.
+        - model_prefix (str): Prefix for model name.
+        - writer (SummaryWriter): TensorBoard summary writer.
+        Raises:
+        - Exception: If an unsupported sampling mode is provided.
+        """
+        # 
         self.X_L = kwargs.get('X_L', None)
         self.Y_L = kwargs.get('Y_L', None)
         self.N_L = self.X_L.shape[0]
