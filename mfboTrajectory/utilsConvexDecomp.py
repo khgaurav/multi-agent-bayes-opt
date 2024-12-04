@@ -1091,7 +1091,7 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
 
         polygon_idx = face_vertex[polygon_path[i]][2]
         
-        if i < len(point_idx)-1:
+        if i < len(point_idx):
             _p_idx = face_vertex[polygon_path[i]][2]
             face_idx = types.index("face_vertex", i)
             output_edge_t = face_vertex[polygon_path[face_idx]][2]
@@ -1116,7 +1116,7 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
         if len(prev_output_plane) > 0:
             polygon_info_t["input_plane"] = prev_output_plane
 
-        if np.all(output_edge != None):    
+        if np.all(output_edge != None):
             x_1_t = points_set[output_edge[0][0]][output_edge[0][1]][0]
             y_1_t = points_set[output_edge[0][0]][output_edge[0][1]][1]
             x_2_t = points_set[output_edge[1][0]][output_edge[1][1]][0]
@@ -1231,6 +1231,8 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
                 plane_pos_set_corner_buffer.append(polygon_info_single_t)
 
             elif np.linalg.norm(vi1-vf0) < eps_t:
+                print("eps")
+                print(prev_output_edge)
                 polygon_info_single_t = []
                 via = vi1 + (vi0-vi1)*alpha_t
                 vfa = vf0 + (vf1-vf0)*alpha_t
@@ -1272,6 +1274,8 @@ def get_plane_pos_set(points_set, polygon_set, face_vertex, \
                 plane_pos_set_corner_buffer.append(polygon_info_single_t)
 
         plane_pos_set.append(polygon_info_t)
+        if types[i] == "waypoint" and i > 0 and i < len(polygon_path)-1:
+            plane_pos_set.append(polygon_info_t)
         prev_output_edge = copy.deepcopy(output_edge)
         if np.all(prev_output_edge != None):
             prev_output_edge.reverse()

@@ -16,27 +16,27 @@ def get_waypoints_plane(polygon_filedir, polygon_filename, sample_name, flag_t_s
     """Load polygon points from file
     
     Returns:
-        polygon_path_points: np array where each row is a [x, y, z] waypoint, waypoints include centers of faces to pass through + start+end points
+        polygon_path_points: np array where each row is a [x, y, z] point including 
         plane_pos_set: list of dict of polygons, dict includes all polygon faces and the input and/or output face
         t_set: if flag_t_set, returns initial guess of time estimates
     """
     if flag_t_set:
-        points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point, t_set \
+        points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point, types, t_set \
             = load_polygon_path(filedir=polygon_filedir, filename=polygon_filename, sample_name=sample_name, flag_t_set=True)
     else:
-        points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point \
+        points_set, polygon_set, face_vertex, polygon_path, initial_point, final_point, types \
             = load_polygon_path(filedir=polygon_filedir, filename=polygon_filename, sample_name=sample_name, flag_t_set=False)
 
     unit_height_t = 1
-    plane_pos_set, polygon_path_points = get_plane_pos_set( \
+    plane_pos_set, polygon_path_points, waypoints = get_plane_pos_set( \
         points_set, polygon_set, face_vertex, \
         polygon_path, initial_point, final_point, \
-        unit_height_t)
+        unit_height_t, types)
     
     if flag_t_set:
-        return np.array(polygon_path_points), plane_pos_set, t_set
+        return np.array(polygon_path_points), plane_pos_set, t_set, waypoints
     else:
-        return np.array(polygon_path_points), plane_pos_set
+        return np.array(polygon_path_points), plane_pos_set, waypoints
 
 
 def meta_low_fidelity(poly, alpha_set, t_set_sta, points, plane_pos_set, \
@@ -265,8 +265,8 @@ def get_dataset_init(name,
         flag_multicore=False, 
         dataset_dir="./mfbo_data", 
         alpha_robot=None):
-    X_L = []
-    Y_L = []
+    # X_L = []
+    # Y_L = []
     path_dataset_low = "{}/{}/low_fidelity_data_sta_{}_{}_smode{}.yaml" \
                     .format(dataset_dir,str(name),np.int(10*lb),np.int(10*ub),sampling_mode)
     
@@ -281,7 +281,7 @@ def get_dataset_init(name,
     elif sampling_mode == 1:
         traj_sampler = TrajSampler(N=t_dim, sigma=0.2, flag_load=False, cov_mode=1, flag_pytorch=False)
         sample_data = lambda N_sample: traj_sampler.rsample(N_sample=N_sample)
-    elif sampling_mode == 2:
+    elif sampling_mode == 2:  # USING THIS ONE
         traj_sampler = TrajSampler(N=t_dim, sigma=0.2, flag_load=False, cov_mode=1, flag_pytorch=False)
         sample_data = lambda N_sample: np.concatenate((lhs(t_dim, N_sample),traj_sampler.rsample(N_sample=N_sample)),axis=0)
     elif sampling_mode == 3:
