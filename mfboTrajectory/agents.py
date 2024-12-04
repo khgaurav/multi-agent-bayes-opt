@@ -204,6 +204,17 @@ class MFBOAgentBase():
             raise "Not Implemented"
     
     def compute_next_point_cand_boundary(self):        
+        """
+        Evaluates points to determine the next point to sample in the optimization process.
+        The method updates the following attributes:
+        - self.X_next: The next candidate point to sample.
+        - self.X_next_fidelity: The fidelity level of the next candidate point (0 for low-fidelity, 1 for high-fidelity).
+        - self.min_time_cand: The minimum time candidate.
+        - self.alpha_min_cand: The denormalized candidate point.
+        - self.flag_found_ei: A flag indicating whether a point with positive expected improvement was found.
+        Returns:
+            None
+        """
         mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
         
         ent_L = -np.abs(mean_L)/(var_L + 1e-9)*self.C_L

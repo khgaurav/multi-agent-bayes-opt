@@ -31,6 +31,7 @@ class TrajectorySimulation(BaseTrajFunc):
                        max_pos_err=5.0, min_pos_err=0.5, 
                        max_yaw_err=15.0, min_yaw_err=5.0, 
                        freq_ctrl=200, traj_ref_path=None):
+        # Convert to cos value
         max_yaw_err = np.cos(max_yaw_err*np.pi/180.0)
         min_yaw_err = np.cos(min_yaw_err*np.pi/180.0)
         
