@@ -15,7 +15,7 @@ from mfboTrajectory.multiFidelityModelPolytopes import get_waypoints_plane, meta
 from mfboTrajectory.utilsConvexDecomp import *
 
 if __name__ == "__main__":
-    sample_name = ['traj_9', 'traj_10', 'traj_11', 'traj_12', 'traj_13', 'traj_14']
+    sample_name = ['traj_13', 'traj_14']
     drone_model = "default"
     
     rand_seed = [123, 445, 678, 115, 92, 384, 992, 874, 490, 41, 83, 78, 991, 993, 994, 995, 996, 997, 998, 999]
@@ -62,7 +62,8 @@ if __name__ == "__main__":
     # plane_pos_set = list of dicts of polytopes, each dict includes list of faces ("constraint planes") and input and/or output plane
     # points = waypoints generated from polytopes (??), includes midpoint of input/output planes
     # t_set_sta = initial time allocation per segment
-    points, plane_pos_set, t_set_sta, waypoints = get_waypoints_plane(polygon_filedir, polygon_filename, sample_name_, flag_t_set=True)
+    points, plane_pos_set, t_set_sta, waypoints = get_waypoints_plane("constraints_data", "polytopes_constraints.yaml", "traj_13", True)
+    points1, plane_pos_set1, t_set_sta1, waypoints1 = get_waypoints_plane("constraints_data", "polytopes_constraints.yaml", "traj_14", True)
 
     lb = 0.1
     ub = 1.9
@@ -96,27 +97,38 @@ if __name__ == "__main__":
                 max_col_err=max_col_err, N_trial=N_trial)
     else:
         print("Initializing dataset")
-        sanity_check_t = lambda t_set, d_ordered, d_ordered_yaw: \
-            poly.run_sim_loop(t_set, d_ordered, d_ordered_yaw, plane_pos_set, max_col_err=max_col_err, N_trial=N_trial)
         print("Start generating initial trajectory")
-        t_set_sta, d_ordered, d_ordered_yaw = poly.update_traj(t_set_sta, 
-                                                               points, 
-                                                               plane_pos_set, 
-                                                               waypoints,
-                                                               np.ones_like(t_set_sta),
+        # t_set_sta, d_ordered, d_ordered_yaw = poly.update_traj(t_set_sta, 
+        #                                                        points, 
+        #                                                        plane_pos_set, 
+        #                                                        waypoints,
+        #                                                        np.ones_like(t_set_sta),
+        #                                                        flag_fixed_point=False, 
+        #                                                        flag_fixed_end_point=False)
+        t_set_sta, d_ordered, d_ordered_yaw = poly.update_traj_multiple([t_set_sta, t_set_sta1], 
+                                                               [points, points1], 
+                                                               [plane_pos_set, plane_pos_set1], 
+                                                               [waypoints, waypoints1],
+                                                               [np.ones_like(t_set_sta), np.ones_like(t_set_sta1)],
                                                                flag_fixed_point=False, 
                                                                flag_fixed_end_point=False)
 
         print("Done generating initial trajectory")
         print("Start generating time optimized trajectory")
-        t_set_sim, d_ordered, d_ordered_yaw, alpha_sim = poly.optimize_alpha(points,  
-                                                                             t_set_sta,  # initial time array
-                                                                             d_ordered,  # initial position array
-                                                                             d_ordered_yaw,  # initial yaw angle array
-                                                                             alpha_scale=1.0,  # alpha scaling
-                                                                             sanity_check_t=sanity_check_t,  # sim env to check valid trajectory
-                                                                             flag_return_alpha=True,  # returns alpha value if true
-                                                                             )
+        t_set_sim = [0, 0]
+        alpha_sim = [0, 0]
+
+        sanity_check_t = lambda t_set, d_ordered, d_ordered_yaw, plane_pos_set: \
+            poly.run_sim_loop(t_set, d_ordered, d_ordered_yaw, plane_pos_set, max_col_err=max_col_err, N_trial=N_trial)
+        t_set_sim, d_ordered, d_ordered_yaw, alpha_sim = poly.optimize_alpha_multiple(points,  
+                                                                            t_set_sta,  # initial time array
+                                                                            d_ordered,  # initial position array
+                                                                            d_ordered_yaw,  # initial yaw angle array
+                                                                            [plane_pos_set, plane_pos_set1], 
+                                                                            alpha_scale=1.0,  # alpha scaling
+                                                                            sanity_check_t=sanity_check_t,  # sim env to check valid trajectory
+                                                                            flag_return_alpha=True,  # returns alpha value if true
+                                                                            )
         # save data to files
         with open(f"{sample_name_}.npy", "wb") as f:
             np.save(f, t_set_sim)

@@ -692,6 +692,43 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             return t_set_new, d_ordered, d_ordered_yaw, res_f/res_i
         else:
             return t_set_new, d_ordered, d_ordered_yaw
+        
+    def update_traj_multiple(self, t_set, points, plane_pos_set, waypoints, alpha_set=None, \
+                yaw_mode=0, flag_run_sim=False, \
+                flag_fixed_end_point=True, \
+                flag_fixed_point=False, flag_return_snap=False):
+        """
+        Returns:
+            t_set_new: t_set*alpha_set
+        """
+        # flag_update_points = False
+        t_set_new = []
+        d_ordered = [0, 0]
+        d_ordered_yaw = [0, 0]
+        for i in range(len(t_set)):
+            if np.any(alpha_set[i]==None):
+                alpha_set[i]=1.0*np.ones_like(t_set[i])     
+            
+            # Scale time with alpha_set
+            t_set_new.append(np.multiply(t_set[i], alpha_set[i]))
+            # Calculate snap oh both position and yaw
+            res, d_ordered[i], d_ordered_yaw[i] = self.snap_acc_obj(
+            t_set=t_set_new[i], points=points[i], plane_pos_set=plane_pos_set[i], waypoints=waypoints[i],\
+            deg_init_min=0,deg_init_max=4, \
+            deg_end_min=0,deg_end_max=2, \
+            deg_init_yaw_min=0,deg_init_yaw_max=4, \
+            deg_end_yaw_min=0,deg_end_yaw_max=2, \
+            flag_fixed_end_point=flag_fixed_end_point, \
+            flag_init_point=True, flag_fixed_point=flag_fixed_point, \
+            yaw_mode=yaw_mode)
+        
+        if flag_run_sim:
+            debug_array = self.sim.run_simulation_for_multiple_drones( \
+                t_sets=t_set_new, d_ordereds=d_ordered, d_ordereds_yaw=d_ordered_yaw, \
+                max_pos_err=0.2, min_pos_err=0.1, freq_ctrl=200, freq_sim=400)
+            self.sim.plot_result(debug_array[0], save_dir="../trajectory/result", flag_save=True, save_idx="0", t_set=t_set_new, d_ordered=d_ordered)
+        
+        return t_set_new, d_ordered, d_ordered_yaw
     
     def wrapper_sanity_check(self, args):
         points = args[0]
@@ -715,72 +752,77 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         
         """        
         flag_loop = False
-        N_wp = np.int(d_ordered.shape[0]/self.N_DER)
-        N_POLY = t_set.shape[0]
+        N_wp = np.int(d_ordered[0].shape[0]/self.N_DER)
+        N_POLY = t_set[0].shape[0]
         if N_wp == N_POLY:
             flag_loop = True
         
         t_set_new = t_set
         N_success_t = 0
         for idx_trial_t in range(N_trial):
-            debug_array = self.sim.run_simulation_from_der(t_set_new, d_ordered, d_ordered_yaw, N_trial=1, 
-                                                           max_pos_err=max_pos_err, min_pos_err=0.1, 
-                                                           max_yaw_err=120., min_yaw_err=60., 
-                                                           freq_ctrl=200)
+            # debug_array = self.sim.run_simulation_from_der(t_set_new[0], d_ordered[0], d_ordered_yaw[0], N_trial=1, 
+            #                                                max_pos_err=max_pos_err, min_pos_err=0.1, 
+            #                                                max_yaw_err=120., min_yaw_err=60., 
+            #                                                freq_ctrl=200)
+            debug_arrays = self.sim.run_simulation_for_multiple_drones(t_set_new, d_ordered, d_ordered_yaw, N_trial=1, 
+                                                                      max_pos_err=max_pos_err, min_pos_err=0.1, 
+                                                                      max_yaw_err=120., min_yaw_err=60., 
+                                                                      freq_ctrl=200)
 
-            time_array = debug_array[0]["time"]
-            pos_array = debug_array[0]["pos"]
-            p_ii = 0
-            p_ii_n = 1
-            t_bias = 0
-            flag_update_poly = True
-            for idx in range(time_array.shape[0]):
-                if (time_array[idx]-t_bias) > t_set_new[p_ii]:
-                    t_bias += t_set_new[p_ii]
-                    p_ii += 1
-                    if flag_loop:
-                        p_ii_n = (p_ii+1)%(N_POLY)
+            for debug_array in debug_arrays:
+                time_array = debug_array[0]["time"]
+                pos_array = debug_array[0]["pos"]
+                p_ii = 0
+                p_ii_n = 1
+                t_bias = 0
+                flag_update_poly = True
+                for idx in range(time_array.shape[0]):
+                    if (time_array[idx]-t_bias) > t_set_new[0][p_ii]:
+                        t_bias += t_set_new[0][p_ii]
+                        p_ii += 1
+                        if flag_loop:
+                            p_ii_n = (p_ii+1)%(N_POLY)
+                        else:
+                            p_ii_n = (p_ii+1)
+                        if p_ii == N_POLY:
+                            break
+                        flag_update_poly = True
+                    elif idx == 0:
+                        flag_update_poly = True
                     else:
-                        p_ii_n = (p_ii+1)
-                    if p_ii == N_POLY:
-                        break
-                    flag_update_poly = True
-                elif idx == 0:
-                    flag_update_poly = True
-                else:
-                    flag_update_poly = False
+                        flag_update_poly = False
 
-                if flag_update_poly:
-                    V_norm = np.zeros((len(plane_pos_set[p_ii]["constraints_plane"]),3))
-                    V_bias = np.zeros(len(plane_pos_set[p_ii]["constraints_plane"]))
-                    for i in range(len(plane_pos_set[p_ii]["constraints_plane"])):
-                        v0 = np.array(plane_pos_set[p_ii]["constraints_plane"][i][0])
-                        v1 = np.array(plane_pos_set[p_ii]["constraints_plane"][i][1])
-                        for k in range(2,len(plane_pos_set[p_ii]["constraints_plane"][i])):
-                            v2 = np.array(plane_pos_set[p_ii]["constraints_plane"][i][k])
-                            res_t = np.fabs((v1-v0).dot(v2-v0)/np.linalg.norm(v1-v0)/np.linalg.norm(v2-v0))
-                            if res_t < 1-1e-4:
-                                break
-                        V_norm[i,:] = np.cross(v1-v0, v2-v0)
-                        V_norm[i,:] /= np.linalg.norm(V_norm[i,:])
-                        V_bias[i] = V_norm[i,:].dot(v0)
+                    if flag_update_poly:
+                        V_norm = np.zeros((len(plane_pos_set[0][p_ii]["constraints_plane"]),3))
+                        V_bias = np.zeros(len(plane_pos_set[0][p_ii]["constraints_plane"]))
+                        for i in range(len(plane_pos_set[0][p_ii]["constraints_plane"])):
+                            v0 = np.array(plane_pos_set[0][p_ii]["constraints_plane"][i][0])
+                            v1 = np.array(plane_pos_set[0][p_ii]["constraints_plane"][i][1])
+                            for k in range(2,len(plane_pos_set[0][p_ii]["constraints_plane"][i])):
+                                v2 = np.array(plane_pos_set[0][p_ii]["constraints_plane"][i][k])
+                                res_t = np.fabs((v1-v0).dot(v2-v0)/np.linalg.norm(v1-v0)/np.linalg.norm(v2-v0))
+                                if res_t < 1-1e-4:
+                                    break
+                            V_norm[i,:] = np.cross(v1-v0, v2-v0)
+                            V_norm[i,:] /= np.linalg.norm(V_norm[i,:])
+                            V_bias[i] = V_norm[i,:].dot(v0)
 
-                if np.any(V_norm.dot(pos_array[idx,:])-V_bias < -max_col_err):
-                    if debug_array[0]["failure_idx"] == -1:
-                        debug_array[0]["failure_idx"] = idx
-                    else:
-                        failure_idx = debug_array[0]["failure_idx"]
-                        if failure_idx > idx:
+                    if np.any(V_norm.dot(pos_array[idx,:])-V_bias < -max_col_err):
+                        if debug_array[0]["failure_idx"] == -1:
                             debug_array[0]["failure_idx"] = idx
-                    prRed("crashed at {}".format(idx))
-                    break
+                        else:
+                            failure_idx = debug_array[0]["failure_idx"]
+                            if failure_idx > idx:
+                                debug_array[0]["failure_idx"] = idx
+                        prRed("crashed at {}".format(idx))
+                        break
 
-            if flag_debug:
-                self.plot_sim_result(t_set_new, d_ordered, plane_pos_set, debug_array[0])
+                if flag_debug:
+                    self.plot_sim_result(t_set_new, d_ordered, plane_pos_set, debug_array[0])
 
-            failure_idx = debug_array[0]["failure_idx"]
-            if failure_idx != -1:
-                return False
+                failure_idx = debug_array[0]["failure_idx"]
+                if failure_idx != -1:
+                    return False
         return True
         
     def plot_sim_result(self, t_set, d_ordered, plane_pos_set, debug_value, flag_course_loop=True):
@@ -1320,6 +1362,65 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         else:
             d_ordered_yaw = None
         
+        if flag_return_alpha:
+            return t_set, d_ordered, d_ordered_yaw, alpha
+        else:
+            return t_set, d_ordered, d_ordered_yaw
+    def optimize_alpha_multiple(self, points, t_set, d_ordered, d_ordered_yaw, plane_pos_sets, alpha_scale=1.0, sanity_check_t=None, flag_return_alpha=False):
+        """Scales down obtained time allocation while ensuring feasibility for multiple drones.
+
+        Returns:
+            t_set: list of np arrays
+            d_ordered: list of square np arrays of len self.N_DER*N_wp 
+            d_ordered_yaw: list of square np arrays of len self.N_DER*N_wp 
+            alpha (optional): float
+        """
+        print("start optimize_alpha_multiple")
+        if sanity_check_t == None:
+            sanity_check_t = self.sanity_check
+
+        alpha = 2.0
+        dalpha = 1
+        alpha_tmp = alpha
+        t_set_ret = copy.deepcopy(t_set)
+        d_ordered_ret = copy.deepcopy(d_ordered)
+        d_ordered_yaw_ret = copy.deepcopy(d_ordered_yaw)
+
+        while True:
+            print("loop 1")
+            t_set_opt = [t * alpha for t in t_set]
+            d_ordered_opt = [self.get_alpha_matrix(alpha, np.int(d.shape[0]/self.N_DER)).dot(d) for d in d_ordered]
+            d_ordered_yaw_opt = [self.get_alpha_matrix_yaw(alpha, np.int(d.shape[0]/self.N_DER_YAW)).dot(d) for d in d_ordered_yaw]
+            plane_pos_set = plane_pos_sets
+
+            if not sanity_check_t(t_set_opt, d_ordered_opt, d_ordered_yaw_opt, plane_pos_set):
+                alpha += 5.0
+            else:
+                break
+
+        while True:
+            print("loop 2")
+            print(f"alpha = {alpha}, dalpha={dalpha}")
+            alpha_tmp = alpha - dalpha
+            t_set_opt = [t * alpha_tmp for t in t_set]
+            d_ordered_opt = [self.get_alpha_matrix(alpha_tmp, np.int(d.shape[0]/self.N_DER)).dot(d) for d in d_ordered]
+            d_ordered_yaw_opt = [self.get_alpha_matrix_yaw(alpha_tmp, np.int(d.shape[0]/self.N_DER_YAW)).dot(d) for d in d_ordered_yaw]
+
+            if not sanity_check_t(t_set_opt, d_ordered_opt, d_ordered_yaw_opt, plane_pos_set):
+                dalpha *= 0.1
+            else:
+                alpha = alpha_tmp
+                t_set_ret = t_set_opt
+                d_ordered_ret = d_ordered_opt
+                d_ordered_yaw_ret = d_ordered_yaw_opt
+
+            if dalpha < 1e-2 or alpha < 1e-2:
+                break
+
+        t_set = [t * alpha_scale for t in t_set_ret]
+        d_ordered = [self.get_alpha_matrix(alpha_scale, np.int(d.shape[0]/self.N_DER)).dot(d) for d in d_ordered_ret]
+        d_ordered_yaw = [self.get_alpha_matrix_yaw(alpha_scale, np.int(d.shape[0]/self.N_DER_YAW)).dot(d) for d in d_ordered_yaw_ret]
+
         if flag_return_alpha:
             return t_set, d_ordered, d_ordered_yaw, alpha
         else:
