@@ -225,6 +225,8 @@ class MFBOAgentBase():
     def forward_test(self):
         raise "Not Implemented"
     
+    ### LINE 5 IN ALGORITHM 1 ###
+    # generates candidate solution 
     def compute_next_point_cand(self):
         if self.utility_mode == 0:
             return self.compute_next_point_cand_boundary()
@@ -233,6 +235,8 @@ class MFBOAgentBase():
         else:
             raise "Not Implemented"
     
+    # EXPLORATION
+    # Some helper function to generate the candidate solution @ boundary
     def compute_next_point_cand_boundary(self):        
         """
         Evaluates points to determine the next point to sample in the optimization process.
@@ -245,8 +249,14 @@ class MFBOAgentBase():
         Returns:
             None
         """
+        # Using MFDGP "multi-fideltiy deep gaussian process" to generate GP prior for low fidelity and high fidelity candidates
+        # Refer to paragraph after eq (21) in the "Multi-fideltiy black-box optimization for time-optimal quadrotor maneuvers"
         mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
         
+        # Equation (24)
+        # EXPLORATION
+        # initializing points to select the most uncertain sample near the decision boundary later on (will take max to do this later)
+        # C represents the cost of an evaluation at fidelity level
         ent_L = -np.abs(mean_L)/(var_L + 1e-9)*self.C_L
         ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
         
@@ -256,7 +266,7 @@ class MFBOAgentBase():
         max_ei_idx_L = -1
         max_ei_L = 0
         min_time_tmp = self.min_time
-        for it in range(self.X_cand.shape[0]):
+        for it in range(self.X_cand.shape[0]): #TODO: figure out whats going on here
             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
             min_time_tmp2 = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
             max_ei_tmp_L = (self.min_time-min_time_tmp2)*prob_cand_L[it]
@@ -270,6 +280,10 @@ class MFBOAgentBase():
                 min_time_tmp = min_time_tmp2
         
         X_cand_discard = np.empty(0, dtype=np.int)
+        
+        # NOTE: im guessing this seciton commented out below is for 
+        # expected improvement with constraints
+
 #         if max_ei_idx_L != -1 or max_ei_idx_H != -1:
 #             self.flag_found_ei = True
 #             if max_ei_H < max_ei_L and self.N_low_fidelity < self.MAX_low_fidelity:
@@ -293,7 +307,8 @@ class MFBOAgentBase():
 #             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:],self.ub_i-self.lb_i)
 #             self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         
-        if self.N_low_fidelity < self.MAX_low_fidelity:
+        # if num low fidelity points < 20 (which is set as the max later)
+        if self.N_low_fidelity < self.MAX_low_fidelity:  
             if max_ei_idx_L != -1 or max_ei_idx_H != -1:
                 self.flag_found_ei = True
                 if max_ei_H < max_ei_L:
@@ -306,11 +321,12 @@ class MFBOAgentBase():
                 prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
                 self.min_time_cand = min_time_tmp
             else:
+                # NOTE: max(ent_H) & max(ent_L) select the most uncertain sample near the decision boundary for EXPLORATION
                 if np.max(ent_H) < np.max(ent_L):
-                    self.X_next = self.X_cand[ent_L.argmax()]
+                    self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
                     self.X_next_fidelity = 0
                 else:
-                    self.X_next = self.X_cand[ent_H.argmax()]
+                    self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
                     X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
                     self.X_next_fidelity = 1
                 prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
@@ -325,7 +341,7 @@ class MFBOAgentBase():
                 prPurple("ei_H: {}".format(max_ei_H))
                 self.min_time_cand = min_time_tmp
             else:
-                self.X_next = self.X_cand[ent_H.argmax()]
+                self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
                 X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
                 self.X_next_fidelity = 1
                 prGreen("ent_H: {}".format(np.max(ent_H)))
@@ -337,9 +353,18 @@ class MFBOAgentBase():
         if self.X_next_fidelity == 1:
             print("min time cand: {}, alpha: {}".format(self.min_time_cand, self.alpha_min_cand))
 
+    # EXPLOITATION
+    # Helper function to generate next candidate point EIC
+    # in exploitation, utilize: "Expected Improvement with Constraints"
     def compute_next_point_cand_eic(self):
+        # Using MFDGP "multi-fideltiy deep gaussian process" to generate GP prior for low fidelity and high fidelity candidates
+        # Refer to paragraph after eq (21) in the "Multi-fideltiy black-box optimization for time-optimal quadrotor maneuvers"
         mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
         
+        # Equation (24)
+        # EXPLORATION??
+        # TODO: Figure out why these are still calculated in the EXPLOITATION STEP
+        # initializing points to select the most uncertain sample near the decision boundary later on (will take max to do this later)
         ent_L = -np.abs(mean_L)/(var_L + 1e-9)*self.C_L
         ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
         
@@ -404,11 +429,12 @@ class MFBOAgentBase():
             prPurple("pb_H: {}, pb_L: {}".format(max_pb_H,max_pb_L))
             self.min_time_cand = min_time_tmp_pb
         else:
+            # NOTE: max(ent_H) & max(ent_L) select the most uncertain sample near the decision boundary for EXPLORATION
             if np.max(ent_H) < np.max(ent_L) and self.N_low_fidelity < self.MAX_low_fidelity:
-                self.X_next = self.X_cand[ent_L.argmax()]
+                self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
                 self.X_next_fidelity = 0
             else:
-                self.X_next = self.X_cand[ent_H.argmax()]
+                self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
                 X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
                 self.X_next_fidelity = 1
             prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
@@ -419,6 +445,7 @@ class MFBOAgentBase():
         if self.X_next_fidelity == 1:
             print("min time cand: {}, alpha: {}".format(self.min_time_cand, self.alpha_min_cand))
 
+    # TODO: Figure out what this corresponds to in pseudocode
     def append_next_point(self):
         X_next_denorm = self.lb_i + np.multiply(self.X_next[:self.t_dim],self.ub_i-self.lb_i)
         X_next_time = X_next_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
@@ -477,6 +504,7 @@ class MFBOAgentBase():
             yaml_out.write("  alpha_cand: [{}]\n\n".format(','.join([str(x) for x in self.alpha_cand_array[it]])))
         yaml_out.close()
 
+    ### LINES 5-7 IN ALGORITHM 1 ###
     def active_learning(self, N=15, MAX_low_fidelity=20, plot=False, filedir='./mfbo_data', \
                         filename_plot='active_learning_%i.png', \
                         filename_result='result.yaml', \
@@ -725,6 +753,7 @@ class ActiveMFDGP(MFBOAgentBase):
         
         print(" - Time: %.3f" % (time.time() - start_time))
     
+    # line 8 of Algorithm 1 (i think)
     def forward_cand(self):
         self.X_cand = self.sample_data(self.N_cand)
         if self.sampling_mode >= 2:
