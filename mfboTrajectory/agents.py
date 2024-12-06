@@ -562,8 +562,10 @@ class MFBOAgentBase():
         main_iter_start = self.start_iter
         self.min_time = self.min_time_array[-1]
         
+        # Save results if the starting iteration is the last one
         if main_iter_start == N-1:
             self.save_result_data(filedir, filename_result)
+        # Main loop for active learning iterations
 
         for main_iter in range(main_iter_start, N):
             prGreen("#################################################")
@@ -571,8 +573,11 @@ class MFBOAgentBase():
             self.X_next_fidelity = 0
             if not hasattr(self, 'N_low_fidelity'):
                 self.N_low_fidelity = 0
+            # If the next point is not found, create a model and compute the next point
             num_found_ei = 0
+                    # Create a model
             num_low_fidelity = self.N_low_fidelity
+                    # Compute the next point
             while self.X_next_fidelity == 0:
                 try:
                     self.create_model(num_epochs=self.iter_create_model)
@@ -596,6 +601,7 @@ class MFBOAgentBase():
                     #     self.compute_next_point_cand()
                     # else:
                     raise e
+                # Append the next point
                 self.append_next_point()
                 if plot:
                     prefix = self.model_prefix.split("/")[1]+"_"+str(self.rand_seed)

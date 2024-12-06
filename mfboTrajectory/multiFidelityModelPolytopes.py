@@ -39,7 +39,7 @@ def get_waypoints_plane(polygon_filedir, polygon_filename, sample_name, flag_t_s
         return np.array(polygon_path_points), plane_pos_set, waypoints
 
 
-def meta_low_fidelity(poly, alpha_set, t_set_sta, points, plane_pos_set, \
+def meta_low_fidelity(poly, alpha_set, t_set_sta, points, plane_pos_set, waypoints, \
                       debug=True, multicore=False, lb=0.6, ub=1.4):
 
     flag_fixed_point = False
@@ -60,7 +60,7 @@ def meta_low_fidelity(poly, alpha_set, t_set_sta, points, plane_pos_set, \
     # check that trajectory of (sum_i=it^n x_i) is valid (??)
     for it in range(alpha_set.shape[0]):
         alpha_tmp = lb_i + np.multiply(alpha_set[it,:t_dim],ub_i-lb_i)
-        results.append(poly.wrapper_sanity_check((points, plane_pos_set, t_set_sta, alpha_tmp, flag_fixed_point)))
+        results.append(poly.wrapper_sanity_check((points, plane_pos_set, waypoints, t_set_sta, alpha_tmp, flag_fixed_point)))
             
     for it in range(alpha_set.shape[0]):
         if results[it]:
