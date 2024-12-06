@@ -126,6 +126,10 @@ if __name__ == "__main__":
     # TODO grab t_set_sim from rachels file
     
     # TODO extract X_L and Y_L from gauravs file
+    with open("traj_14_init_dataset.npy", "rb") as f:
+        X_L = np.load(f)
+        Y_L = np.load(f)
+
 
     # create agent
     mfbo_model = ActiveMFDGP(
