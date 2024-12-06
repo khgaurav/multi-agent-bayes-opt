@@ -225,6 +225,7 @@ class MFBOAgentBase():
     def forward_test(self):
         raise "Not Implemented"
     
+
     ### LINE 5 IN ALGORITHM 1 ###
     # generates candidate solution 
     def compute_next_point_cand(self):
@@ -642,10 +643,10 @@ class MFBOAgentBase():
         plt.scatter(X_L_time_[:,0], X_L_time_[:,1],c=self.Y_L[:],cmap='coolwarm_r', \
                     marker='x',s=50,label='low fidelity sample')
 
-        X_H_denorm_ = np.repeat(np.expand_dims(self.lb_i,0),self.X_H.shape[0],axis=0) + np.multiply(self.X_H, np.repeat(np.expand_dims(self.ub_i-self.lb_i,0),self.X_H.shape[0],axis=0))
-        X_H_time_ = np.multiply(X_H_denorm_, np.repeat(np.expand_dims(self.t_set_sim,0),X_H_denorm_.shape[0],axis=0))
-        plt.scatter(X_H_time_[:,0], X_H_time_[:,1],c=self.Y_H[:],cmap='coolwarm_r',\
-                    s=150,edgecolors='k',label='high fidelity sample')
+        # X_H_denorm_ = np.repeat(np.expand_dims(self.lb_i,0),self.X_H.shape[0],axis=0) + np.multiply(self.X_H, np.repeat(np.expand_dims(self.ub_i-self.lb_i,0),self.X_H.shape[0],axis=0))
+        # X_H_time_ = np.multiply(X_H_denorm_, np.repeat(np.expand_dims(self.t_set_sim,0),X_H_denorm_.shape[0],axis=0))
+        # plt.scatter(X_H_time_[:,0], X_H_time_[:,1],c=self.Y_H[:],cmap='coolwarm_r',\
+        #             s=150,edgecolors='k',label='high fidelity sample')
         
         # X_best_denorm_ = lb_i + np.multiply(X_best, ub_i-lb_i)
         X_best_time_ = np.multiply(self.alpha_min, self.t_set_sim)
@@ -702,13 +703,16 @@ class ActiveMFDGP(MFBOAgentBase):
         self.train_dataset_L = TensorDataset(self.train_x_L, self.train_y_L)
         self.train_loader_L = DataLoader(self.train_dataset_L, batch_size=self.batch_size, shuffle=True)
 
-        self.train_x_H = torch.tensor(self.X_H).float()#.cuda()
-        self.train_y_H = torch.tensor(self.Y_H).float()#.cuda()
-        self.train_dataset_H = TensorDataset(self.train_x_H, self.train_y_H)
-        self.train_loader_H = DataLoader(self.train_dataset_H, batch_size=self.batch_size, shuffle=True)
+        # self.train_x_H = torch.tensor(self.X_H).float()#.cuda()
+        # self.train_y_H = torch.tensor(self.Y_H).float()#.cuda()
+        # self.train_dataset_H = TensorDataset(self.train_x_H, self.train_y_H)
+        # self.train_loader_H = DataLoader(self.train_dataset_H, batch_size=self.batch_size, shuffle=True)
         
-        train_x = [self.train_x_L, self.train_x_H]
-        train_y = [self.train_y_L, self.train_y_H]
+        train_x = self.train_x_L
+        # train_x = [self.train_x_L, self.train_x_H]
+
+        train_y = self.train_y_L
+        # train_y = [self.train_y_L, self.train_y_H]
         
         if not hasattr(self, 'clf'):
             self.clf = MFDeepGPC(train_x, train_y, num_inducing=128)#.cuda()
@@ -716,10 +720,12 @@ class ActiveMFDGP(MFBOAgentBase):
         optimizer = torch.optim.Adam([
             {'params': self.clf.parameters()},
         ], lr=0.001)
-        mll = VariationalELBO(self.clf.likelihood, self.clf, self.train_x_L.shape[-2]+self.train_x_H.shape[-2])
-
+        mll = VariationalELBO(self.clf.likelihood, self.clf, self.train_x_L.shape[-2])
+        # mll = VariationalELBO(self.clf.likelihood, self.clf, self.train_x_L.shape[-2]+self.train_x_H.shape[-2])
         start_time = time.time()
-        N_data = self.X_L.shape[0] + self.X_H.shape[0]
+        N_data = self.X_L.shape[0]
+        # N_data = self.X_L.shape[0] + self.X_H.shape[0]
+
         with gpytorch.settings.fast_computations(log_prob=False, solves=False):
             for i in range(num_epochs):
                 avg_loss = 0
@@ -731,15 +737,15 @@ class ActiveMFDGP(MFBOAgentBase):
                     avg_loss += loss.item()/N_data
                     optimizer.step()
 
-                for minibatch_i, (x_batch, y_batch) in enumerate(self.train_loader_H):
-                    optimizer.zero_grad()
-                    output = self.clf(x_batch, fidelity=2)
-                    loss = -mll(output, y_batch)
-                    output_L = self.clf(x_batch, fidelity=1)
-                    loss -= mll(output_L, y_batch)
-                    avg_loss += loss.item()/N_data
-                    loss.backward(retain_graph=True)
-                    optimizer.step()
+                # for minibatch_i, (x_batch, y_batch) in enumerate(self.train_loader_H):
+                #     optimizer.zero_grad()
+                #     output = self.clf(x_batch, fidelity=2)
+                #     loss = -mll(output, y_batch)
+                #     output_L = self.clf(x_batch, fidelity=1)
+                #     loss -= mll(output_L, y_batch)
+                #     avg_loss += loss.item()/N_data
+                #     loss.backward(retain_graph=True)
+                #     optimizer.step()
 
                 if (i+1)%20 == 0 or i == 0:
                     print('Epoch %d/%d - Loss: %.3f' % (i+1, num_epochs, avg_loss))
@@ -771,23 +777,28 @@ class ActiveMFDGP(MFBOAgentBase):
         var_L = np.empty(0)
         prob_cand_L = np.empty(0)
         prob_cand_L_mean = np.empty(0)
-        mean_H = np.empty(0)
-        var_H = np.empty(0)
-        prob_cand_H = np.empty(0)
+        # mean_H = np.empty(0)
+        # var_H = np.empty(0)
+        # prob_cand_H = np.empty(0)
         
-        for minibatch_i, (x_batch,) in enumerate(test_loader):
-            p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+        for minibatch_i, (x_batch,) in enumerate(test_loader): #TODO
+            p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_L=self.C_L, beta=self.beta, return_all=True)
+            # p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+
             mean_L = np.append(mean_L, m)
             var_L = np.append(var_L, v)
             prob_cand_L = np.append(prob_cand_L, p[:,1])
             prob_cand_L_mean = np.append(prob_cand_L_mean, pm[:,1])
         
-            p_H, m_H, v_H, pm_H = self.clf.predict_proba_MF(x_batch, fidelity=2, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
-            mean_H = np.append(mean_H, m_H)
-            var_H = np.append(var_H, v_H)
-            prob_cand_H = np.append(prob_cand_H, p_H[:,1])
+            # p_H, m_H, v_H, pm_H = self.clf.predict_proba_MF(x_batch, fidelity=2, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+            # p_H, m_H, v_H, pm_H = self.clf.predict_proba_MF(x_batch, fidelity=2, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+            # mean_H = np.append(mean_H, m_H)
+            # var_H = np.append(var_H, v_H)
+            # prob_cand_H = np.append(prob_cand_H, p_H[:,1])
         
-        return mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean
+        return mean_L, var_L, prob_cand_L, prob_cand_L_mean
+        # return mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean
+
     
     def forward_test(self):
         test_x_L = torch.tensor(self.X_test).float()#.cuda()
