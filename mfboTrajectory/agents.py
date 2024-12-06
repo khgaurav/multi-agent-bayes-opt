@@ -735,10 +735,10 @@ class ActiveMFDGP(MFBOAgentBase):
         # self.train_dataset_H = TensorDataset(self.train_x_H, self.train_y_H)
         # self.train_loader_H = DataLoader(self.train_dataset_H, batch_size=self.batch_size, shuffle=True)
         
-        train_x = self.train_x_L
+        train_x = [self.train_x_L]
         # train_x = [self.train_x_L, self.train_x_H]
 
-        train_y = self.train_y_L
+        train_y = [self.train_y_L]
         # train_y = [self.train_y_L, self.train_y_H]
         
         if not hasattr(self, 'clf'):
