@@ -64,25 +64,25 @@ class MFBOAgentBase():
         self.X_L = kwargs.get('X_L', None)
         self.Y_L = kwargs.get('Y_L', None)
         self.N_L = self.X_L.shape[0]
-        self.X_H = kwargs.get('X_H', None)
-        self.Y_H = kwargs.get('Y_H', None)
-        self.N_H = self.X_H.shape[0]
-        self.N_H_i = self.X_H.shape[0]
+        # self.X_H = kwargs.get('X_H', None)
+        # self.Y_H = kwargs.get('Y_H', None)
+        # self.N_H = self.X_H.shape[0]
+        # self.N_H_i = self.X_H.shape[0]
         self.lb_i = kwargs.get('lb_i', None)
         self.ub_i = kwargs.get('ub_i', None)
         self.rand_seed = kwargs.get('rand_seed', None)
         self.C_L = kwargs.get('C_L', None)
         self.C_H = kwargs.get('C_H', None)
         self.sampling_func_L = kwargs.get('sampling_func_L', None)
-        self.sampling_func_H = kwargs.get('sampling_func_H', None)
+        # self.sampling_func_H = kwargs.get('sampling_func_H', None)
         self.t_set_sim = kwargs.get('t_set_sim', None)
         self.traj_wp_sampler_mean = kwargs.get('traj_wp_sampler_mean', 0.5)
         self.traj_wp_sampler_var = kwargs.get('traj_wp_sampler_var', 0.2)
         
         self.delta_L = kwargs.get('delta_L', 0.8)
-        self.delta_H = kwargs.get('delta_H', 0.4)
+        # self.delta_H = kwargs.get('delta_H', 0.4)
         self.beta = kwargs.get('beta', 0.05)
-        self.dim = self.X_H.shape[1]
+        # self.dim = self.X_H.shape[1]
         self.iter_create_model = kwargs.get('iter_create_model', 200)
         self.N_cand = kwargs.get('N_cand', 1000)
 
@@ -121,7 +121,7 @@ class MFBOAgentBase():
             self.sample_data = lambda N_sample: lhs(self.t_dim, N_sample)
         else:
             raise "Not implemented"
-        self.X_cand = self.sample_data(self.N_cand)
+        self.X_cand = self.sample_data(self.N_cand) # TODO FIGURE OUT THE EXACT CONTENTS OF X_CAND BECASUE ITS INDEXED LATER WITH HIGH AND LOW FIDELTIY INDICES
         
         self.min_time = 1.0
         self.min_time_cand = 1.0
@@ -145,9 +145,9 @@ class MFBOAgentBase():
             self.X_L = np.array(yaml_in["X_L"])
             self.Y_L = np.array(yaml_in["Y_L"])
             self.N_L = self.X_L.shape[0]
-            self.X_H = np.array(yaml_in["X_H"])
-            self.Y_H = np.array(yaml_in["Y_H"])
-            self.N_H = self.X_H.shape[0]
+            # self.X_H = np.array(yaml_in["X_H"])
+            # self.Y_H = np.array(yaml_in["Y_H"])
+            # self.N_H = self.X_H.shape[0]
             self.X_cand = np.array(yaml_in["X_cand"])
 #             self.X_cand_H = np.array(yaml_in["X_cand_H"])
             self.min_time_array = yaml_in["min_time_array"]
@@ -161,10 +161,12 @@ class MFBOAgentBase():
             self.N_low_fidelity = np.int(yaml_in["N_low_fidelity"])
             
             prGreen("#################################################")
-            prGreen("Exp data loaded. start_iter: {}, N_L: {}, N_H: {}"\
-                    .format(self.start_iter, self.Y_L.shape[0], self.Y_H.shape[0]))
+            prGreen("Exp data loaded. start_iter: {}, N_L: {}"\
+                    .format(self.start_iter, self.Y_L.shape[0]))
+            # prGreen("Exp data loaded. start_iter: {}, N_L: {}, N_H: {}"\
+            #         .format(self.start_iter, self.Y_L.shape[0], self.Y_H.shape[0]))
             prGreen("#################################################")
-        
+    
     def save_exp_data(self, \
                   filedir='./mfbo_data/', \
                   filename='exp_data.yaml'):
@@ -180,12 +182,12 @@ class MFBOAgentBase():
         yaml_out.write("Y_L: [{}]\n".format(', '.join([str(x) for x in self.Y_L])))
         yaml_out.write("\n")
         
-        yaml_out.write("X_H:\n")
-        for it in range(self.X_H.shape[0]):
-            yaml_out.write("  - [{}]\n".format(', '.join([str(x) for x in self.X_H[it,:]])))
-        yaml_out.write("\n")
-        yaml_out.write("Y_H: [{}]\n".format(', '.join([str(x) for x in self.Y_H])))
-        yaml_out.write("\n")
+        # yaml_out.write("X_H:\n")
+        # for it in range(self.X_H.shape[0]):
+        #     yaml_out.write("  - [{}]\n".format(', '.join([str(x) for x in self.X_H[it,:]])))
+        # yaml_out.write("\n")
+        # yaml_out.write("Y_H: [{}]\n".format(', '.join([str(x) for x in self.Y_H])))
+        # yaml_out.write("\n")
         
         yaml_out.write("X_cand:\n")
         for it in range(self.X_cand.shape[0]):
@@ -226,7 +228,7 @@ class MFBOAgentBase():
         raise "Not Implemented"
     
     ### LINE 5 IN ALGORITHM 1 ###
-    # generates candidate solution 
+    # generates candidate solution
     def compute_next_point_cand(self):
         if self.utility_mode == 0:
             return self.compute_next_point_cand_boundary()
@@ -251,18 +253,20 @@ class MFBOAgentBase():
         """
         # Using MFDGP "multi-fideltiy deep gaussian process" to generate GP prior for low fidelity and high fidelity candidates
         # Refer to paragraph after eq (21) in the "Multi-fideltiy black-box optimization for time-optimal quadrotor maneuvers"
-        mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+        mean_L, var_L, prob_cand_L, prob_cand_L_mean = self.forward_cand()
+        # mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+
         
         # Equation (24)
         # EXPLORATION
         # initializing points to select the most uncertain sample near the decision boundary later on (will take max to do this later)
         # C represents the cost of an evaluation at fidelity level
         ent_L = -np.abs(mean_L)/(var_L + 1e-9)*self.C_L
-        ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
+        # ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
         
         self.flag_found_ei = False
-        max_ei_idx_H = -1
-        max_ei_H = 0
+        # max_ei_idx_H = -1
+        # max_ei_H = 0
         max_ei_idx_L = -1
         max_ei_L = 0
         min_time_tmp = self.min_time
@@ -270,14 +274,14 @@ class MFBOAgentBase():
             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
             min_time_tmp2 = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
             max_ei_tmp_L = (self.min_time-min_time_tmp2)*prob_cand_L[it]
-            max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
+            # max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
             if max_ei_tmp_L > max_ei_L and prob_cand_L[it] > 1-self.delta_L:
                 max_ei_L = max_ei_tmp_L
                 max_ei_idx_L = it
-            if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
-                max_ei_H = max_ei_tmp_H
-                max_ei_idx_H = it
-                min_time_tmp = min_time_tmp2
+            # if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
+            #     max_ei_H = max_ei_tmp_H
+            #     max_ei_idx_H = it
+            #     min_time_tmp = min_time_tmp2
         
         X_cand_discard = np.empty(0, dtype=np.int)
         
@@ -308,45 +312,55 @@ class MFBOAgentBase():
 #             self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         
         # if num low fidelity points < 20 (which is set as the max later)
-        if self.N_low_fidelity < self.MAX_low_fidelity:  
-            if max_ei_idx_L != -1 or max_ei_idx_H != -1:
-                self.flag_found_ei = True
-                if max_ei_H < max_ei_L:
-                    self.X_next = self.X_cand[max_ei_idx_L,:]
-                    self.X_next_fidelity = 0
-                else:
-                    self.X_next = self.X_cand[max_ei_idx_H,:]
-                    X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
-                    self.X_next_fidelity = 1
-                prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
-                self.min_time_cand = min_time_tmp
-            else:
-                # NOTE: max(ent_H) & max(ent_L) select the most uncertain sample near the decision boundary for EXPLORATION
-                if np.max(ent_H) < np.max(ent_L):
-                    self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
-                    self.X_next_fidelity = 0
-                else:
-                    self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
-                    X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
-                    self.X_next_fidelity = 1
-                prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
-                x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
-                self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+        # if self.N_low_fidelity < self.MAX_low_fidelity: # TODO figure IF I REALLY NEED TO CHECK MAX FIDELITY BECASE WE ONLY HAVE LOW
+        if max_ei_idx_L != -1:
+            self.flag_found_ei = True
+            self.X_next = self.X_cand[max_ei_idx_L,:]
+            self.X_next_fidelity = 0
+            prPurple("ei_L: {}".format(max_ei_L))
+            self.min_time_cand = min_time_tmp
+        # if max_ei_idx_L != -1 or max_ei_idx_H != -1:
+        #     self.flag_found_ei = True
+        #     if max_ei_H < max_ei_L:
+        #         self.X_next = self.X_cand[max_ei_idx_L,:]
+        #         self.X_next_fidelity = 0
+        #     else:
+        #         self.X_next = self.X_cand[max_ei_idx_H,:]
+        #         X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
+        #         self.X_next_fidelity = 1
+        #     prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
+        #     self.min_time_cand = min_time_tmp
         else:
-            if max_ei_idx_H != -1:
-                self.flag_found_ei = True
-                self.X_next = self.X_cand[max_ei_idx_H,:]
-                X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
-                self.X_next_fidelity = 1
-                prPurple("ei_H: {}".format(max_ei_H))
-                self.min_time_cand = min_time_tmp
-            else:
-                self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
-                X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
-                self.X_next_fidelity = 1
-                prGreen("ent_H: {}".format(np.max(ent_H)))
-                x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
-                self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+            self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            self.X_next_fidelity = 0
+            # NOTE: max(ent_H) & max(ent_L) select the most uncertain sample near the decision boundary for EXPLORATION
+            # if np.max(ent_H) < np.max(ent_L):
+            #     self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            #     self.X_next_fidelity = 0
+            # else:
+            #     self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            #     X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
+            #     self.X_next_fidelity = 1
+            # prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
+            prGreen("ent_L: {}".format(np.max(ent_L)))
+            # x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i) #TODO FIGURE OUT FORMAT OF X_CAND
+            self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+        # else: # ELSE IS FOR ALL HIGH FIDELITY STUFF, LOW FIDELITY POINTS EXCEED THE MAX NUM DOES NOT APPLY IF ONLY USING LOW FIDELITY
+        #     if max_ei_idx_H != -1:
+        #         self.flag_found_ei = True
+        #         self.X_next = self.X_cand[max_ei_idx_H,:]
+        #         X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
+        #         self.X_next_fidelity = 1
+        #         prPurple("ei_H: {}".format(max_ei_H))
+        #         self.min_time_cand = min_time_tmp
+        #     else:
+        #         self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+        #         X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
+        #         self.X_next_fidelity = 1
+        #         prGreen("ent_H: {}".format(np.max(ent_H)))
+        #         x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
+        #         self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+
         
         self.alpha_min_cand = copy.deepcopy(self.X_next)
         self.alpha_min_cand[:self.t_dim] = self.lb_i + np.multiply(self.X_next[:self.t_dim],self.ub_i-self.lb_i)
@@ -359,18 +373,20 @@ class MFBOAgentBase():
     def compute_next_point_cand_eic(self):
         # Using MFDGP "multi-fideltiy deep gaussian process" to generate GP prior for low fidelity and high fidelity candidates
         # Refer to paragraph after eq (21) in the "Multi-fideltiy black-box optimization for time-optimal quadrotor maneuvers"
-        mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+        mean_L, var_L, prob_cand_L, prob_cand_L_mean = self.forward_cand()
+        # mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+
         
         # Equation (24)
         # EXPLORATION??
         # TODO: Figure out why these are still calculated in the EXPLOITATION STEP
         # initializing points to select the most uncertain sample near the decision boundary later on (will take max to do this later)
         ent_L = -np.abs(mean_L)/(var_L + 1e-9)*self.C_L
-        ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
+        # ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
         
         self.flag_found_ei = False
-        max_ei_idx_H = -1
-        max_ei_H = 0
+        # max_ei_idx_H = -1
+        # max_ei_H = 0
         max_ei_idx_L = -1
         max_ei_L = 0
         min_time_tmp = self.min_time
@@ -378,20 +394,20 @@ class MFBOAgentBase():
             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
             min_time_tmp2 = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
             max_ei_tmp_L = (self.min_time-min_time_tmp2)*prob_cand_L[it]
-            max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
+            # max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
             if max_ei_tmp_L > max_ei_L and prob_cand_L[it] > 1-self.delta_L:
                 max_ei_L = max_ei_tmp_L
                 max_ei_idx_L = it
-            if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
-                max_ei_H = max_ei_tmp_H
-                max_ei_idx_H = it
-                min_time_tmp = min_time_tmp2
+            # if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
+            #     max_ei_H = max_ei_tmp_H
+            #     max_ei_idx_H = it
+            #     min_time_tmp = min_time_tmp2
         
         ########## No boundary search ###########################################
         max_pb_idx_L = -1
         max_pb_L = 0
-        max_pb_idx_H = -1
-        max_pb_H = 0
+        # max_pb_idx_H = -1
+        # max_pb_H = 0
         min_time_tmp_pb = self.min_time
         for it in range(self.X_cand.shape[0]):
             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
@@ -399,50 +415,54 @@ class MFBOAgentBase():
             if self.min_time >= min_time_tmp2 and prob_cand_L[it] > max_pb_L:
                 max_pb_L = prob_cand_L[it]
                 max_pb_idx_L = it
-            if self.min_time >= min_time_tmp2 and prob_cand_H[it] > max_pb_H:
-                max_pb_H = prob_cand_H[it]
-                max_pb_idx_H = it
-                min_time_tmp_pb = min_time_tmp2
+            # if self.min_time >= min_time_tmp2 and prob_cand_H[it] > max_pb_H:
+            #     max_pb_H = prob_cand_H[it]
+            #     max_pb_idx_H = it
+            #     min_time_tmp_pb = min_time_tmp2
         
         X_cand_discard = np.empty(0, dtype=np.int)
-        if max_ei_idx_L != -1 or max_ei_idx_H != -1:
+        if max_ei_idx_L != -1: # or max_ei_idx_H != -1: # 
             self.flag_found_ei = True
-            if max_ei_H < max_ei_L and self.N_low_fidelity < self.MAX_low_fidelity:
-                self.X_next = self.X_cand[max_ei_idx_L,:]
-                self.X_next_fidelity = 0
-            else:
-                self.X_next = self.X_cand[max_ei_idx_H,:]
-                X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
-                self.X_next_fidelity = 1
-            prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
+            # if max_ei_H < max_ei_L and self.N_low_fidelity < self.MAX_low_fidelity:
+            self.X_next = self.X_cand[max_ei_idx_L,:]
+            self.X_next_fidelity = 0
+            # else:
+            #     self.X_next = self.X_cand[max_ei_idx_H,:]
+            #     X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
+            #     self.X_next_fidelity = 1
+            # prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
+            prPurple("ei_L: {}".format(max_ei_L))
             self.min_time_cand = min_time_tmp
         ########## No boundary search ###########################################
-        elif max_pb_idx_L != -1 or max_pb_idx_H != -1:
-            if max_pb_H < max_pb_L and self.N_low_fidelity < self.MAX_low_fidelity:
-                self.X_next = self.X_cand[max_pb_idx_L,:]
-                X_cand_discard = np.append(X_cand_discard, max_pb_idx_L)
-                self.X_next_fidelity = 0
-            else:
-                self.X_next = self.X_cand[max_pb_idx_H,:]
-                X_cand_discard = np.append(X_cand_discard, max_pb_idx_H)
-                self.X_next_fidelity = 1
-            prPurple("pb_H: {}, pb_L: {}".format(max_pb_H,max_pb_L))
+        elif max_pb_idx_L != -1: # or max_pb_idx_H != -1:
+            # if max_pb_H < max_pb_L and self.N_low_fidelity < self.MAX_low_fidelity:
+            self.X_next = self.X_cand[max_pb_idx_L,:]
+            X_cand_discard = np.append(X_cand_discard, max_pb_idx_L)
+            self.X_next_fidelity = 0
+            # else:
+            #     self.X_next = self.X_cand[max_pb_idx_H,:]
+            #     X_cand_discard = np.append(X_cand_discard, max_pb_idx_H)
+            #     self.X_next_fidelity = 1
+            # prPurple("pb_H: {}, pb_L: {}".format(max_pb_H,max_pb_L))
+            prPurple("pb_L: {}".format(max_pb_L))
             self.min_time_cand = min_time_tmp_pb
         else:
             # NOTE: max(ent_H) & max(ent_L) select the most uncertain sample near the decision boundary for EXPLORATION
-            if np.max(ent_H) < np.max(ent_L) and self.N_low_fidelity < self.MAX_low_fidelity:
-                self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
-                self.X_next_fidelity = 0
-            else:
-                self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
-                X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
-                self.X_next_fidelity = 1
-            prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
-            x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
+            # if uncertainty of low fidelity point is greater than high and low fidelity points are lower than the max:
+            # if np.max(ent_H) < np.max(ent_L) and self.N_low_fidelity < self.MAX_low_fidelity: 
+            self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            self.X_next_fidelity = 0
+            # else: #TODO COMMENT OUT THIS ELSE B/C WE CANT USE HIGH FIDELITY BC WE DONT HAVE
+            #     self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            #     X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
+            #     self.X_next_fidelity = 1
+            # prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
+            prGreen("ent_L: {}".format(np.max(ent_L)))
+            x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i) # TODO figure out what to change here for candidate stuff
             self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         
         self.alpha_min_cand = self.lb_i + np.multiply(self.X_next[:,:self.t_dim],self.ub_i-self.lb_i)
-        if self.X_next_fidelity == 1:
+        if self.X_next_fidelity == 1: # TODO (1 means high fidelity), figure out if i can comment this out
             print("min time cand: {}, alpha: {}".format(self.min_time_cand, self.alpha_min_cand))
 
     # TODO: Figure out what this corresponds to in pseudocode
@@ -451,33 +471,40 @@ class MFBOAgentBase():
         X_next_time = X_next_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         print("X_next: {}".format(X_next_denorm))
         print("X_next time: {}".format(X_next_time))
-        if self.X_next_fidelity == 1:
-            self.X_H = np.vstack((self.X_H, self.X_next))
-            Y_next = 1.0*self.sampling_func_H(self.X_next[None,:])
-            self.Y_H = np.concatenate((self.Y_H, np.array(Y_next)))
-            self.N_H += 1
-            if self.min_time > self.min_time_cand and Y_next >= 1:
-                self.min_time = self.min_time_cand
-                self.alpha_min = self.alpha_min_cand
-                prYellow("min time: {}, alpha: {}".format(self.min_time, self.alpha_min))
-            self.N_low_fidelity = 0
-        else:
-            self.N_low_fidelity += 1
-            print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
-            self.X_L = np.vstack((self.X_L, self.X_next))
-            Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])
-            self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))
-            self.N_L += 1
+        # if self.X_next_fidelity == 1: #TODO comment out because this is for high fidelty
+        #     self.X_H = np.vstack((self.X_H, self.X_next))
+        #     Y_next = 1.0*self.sampling_func_H(self.X_next[None,:])
+        #     self.Y_H = np.concatenate((self.Y_H, np.array(Y_next)))
+        #     self.N_H += 1
+        #     if self.min_time > self.min_time_cand and Y_next >= 1:
+        #         self.min_time = self.min_time_cand
+        #         self.alpha_min = self.alpha_min_cand
+        #         prYellow("min time: {}, alpha: {}".format(self.min_time, self.alpha_min))
+        #     self.N_low_fidelity = 0
+        # else:
+        #     self.N_low_fidelity += 1
+        #     print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
+        #     self.X_L = np.vstack((self.X_L, self.X_next))
+        #     Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])
+        #     self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))
+        #     self.N_L += 1
+        self.N_low_fidelity += 1
+        print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
+        self.X_L = np.vstack((self.X_L, self.X_next))
+        Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])
+        self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))
+        self.N_L += 1
         self.exp_result_array.append(Y_next[0])
-        rel_snap = 1.0*self.sampling_func_H(self.X_next[None,:], return_snap=True)
-        self.rel_snap_array.append(rel_snap[0])
-        print("rel_snap: {}".format(rel_snap[0]))
+        # rel_snap = 1.0*self.sampling_func_H(self.X_next[None,:], return_snap=True)
+        # self.rel_snap_array.append(rel_snap[0])
+        # print("rel_snap: {}".format(rel_snap[0]))
 #         if rel_snap[0] < 0.999:
 #             prRed("Wrong rel snap: {}".format(rel_snap[0]))
 #             prRed("X_next_denorm: {}".format(X_next_denorm))
 #             raise("ERROR REL SNAP")
             
-        print("N_L: {}, N_H: {}".format(self.N_L, self.N_H))
+        # print("N_L: {}, N_H: {}".format(self.N_L, self.N_H))
+        print("N_L: {}".format(self.N_L))
         
         if self.X_cand.shape[0] < self.N_cand:
             print("Remaining X_cand: {}".format(self.X_cand.shape[0]))
