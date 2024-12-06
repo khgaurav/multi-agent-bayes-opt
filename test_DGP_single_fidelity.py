@@ -16,7 +16,7 @@ from mfboTrajectory.utilsConvexDecomp import *
 
 
 if __name__ == "__main__":
-    sample_name = ['traj_9', 'traj_10', 'traj_11', 'traj_12', 'traj_13', 'traj_14']
+    sample_name = ['traj_13', 'traj_14']
     drone_model = "default"
     
     rand_seed = [123, 445, 678, 115, 92, 384, 992, 874, 490, 41, 83, 78, 991, 993, 994, 995, 996, 997, 998, 999]
@@ -73,44 +73,45 @@ if __name__ == "__main__":
     lb_i = np.ones(t_dim)*lb
     ub_i = np.ones(t_dim)*ub
 
-    # look for existing dataset
-    res_init, data_init = check_dataset_init(sample_name_, t_dim, N_L=1000, N_H=20, lb=lb, ub=ub, sampling_mode=2)
-    print(res_init)  # false
-    print(data_init)  # None
+    # # look for existing dataset
+    # res_init, data_init = check_dataset_init(sample_name_, t_dim, N_L=1000, N_H=20, lb=lb, ub=ub, sampling_mode=2)
+    # print(res_init)  # false
+    # print(data_init)  # None
 
 
-    if res_init:
-        alpha_sim, X_L, Y_L, X_H, Y_H = data_init
-        t_set_sim = t_set_sta * alpha_sim
-        low_fidelity = lambda x, debug=True, multicore=False: \
-            meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
-        high_fidelity = lambda x, return_snap=False, multicore=False: \
-            meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
-                return_snap=return_snap, multicore=multicore, \
-                max_col_err=max_col_err, N_trial=N_trial)
-    else:
-        raise LookupError("Could not find the correct file")
+    # if res_init:
+    #     alpha_sim, X_L, Y_L, X_H, Y_H = data_init
+    #     t_set_sim = t_set_sta * alpha_sim
+    #     low_fidelity = lambda x, debug=True, multicore=False: \
+    #         meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
+    #     high_fidelity = lambda x, return_snap=False, multicore=False: \
+    #         meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
+    #             return_snap=return_snap, multicore=multicore, \
+    #             max_col_err=max_col_err, N_trial=N_trial)
+    # else:
+    #     raise LookupError("Could not find the correct file")
 
+    # EDIT: 
 
     low_fidelity = lambda x, debug=True, multicore=False: \
         meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
-    high_fidelity = lambda x, return_snap=False, multicore=False: \
-        meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
-            return_snap=return_snap, multicore=multicore, \
-            max_col_err=max_col_err, N_trial=N_trial)
+    # high_fidelity = lambda x, return_snap=False, multicore=False: \
+    #     meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
+    #         return_snap=return_snap, multicore=multicore, \
+    #         max_col_err=max_col_err, N_trial=N_trial)
     
-    X_L, Y_L, X_H, Y_H = get_dataset_init(sample_name_, 
-                                            alpha_sim, 
-                                            low_fidelity, 
-                                            high_fidelity,  # not used
-                                            t_dim, 
-                                            N_L=1000, 
-                                            N_H=20, 
-                                            lb=lb, 
-                                            ub=ub,
-                                            sampling_mode=2, 
-                                            flag_multicore=True)
-    print("Seed {}".format(rand_seed_))
+    # X_L, Y_L, X_H, Y_H = get_dataset_init(sample_name_, 
+    #                                         alpha_sim, 
+    #                                         low_fidelity, 
+    #                                         high_fidelity,  # not used
+    #                                         t_dim, 
+    #                                         N_L=1000, 
+    #                                         N_H=20, 
+    #                                         lb=lb, 
+    #                                         ub=ub,
+    #                                         sampling_mode=2, 
+    #                                         flag_multicore=True)
+    # print("Seed {}".format(rand_seed_))
     
     np.random.seed(rand_seed_)
     torch.manual_seed(rand_seed_)
@@ -122,12 +123,14 @@ if __name__ == "__main__":
     results_filename = f'result_{fileprefix}_{rand_seed_}.yaml'
     exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
     
+    # TODO grab t_set_sim from rachels file
+    
+    # TODO extract X_L and Y_L from gauravs file
+
     # create agent
     mfbo_model = ActiveMFDGP(
         X_L=X_L, 
-        Y_L=Y_L, 
-        X_H=X_H, 
-        Y_H=Y_H,
+        Y_L=Y_L,
         lb_i=lb_i, 
         ub_i=ub_i, 
         rand_seed=rand_seed_,
@@ -139,7 +142,6 @@ if __name__ == "__main__":
         N_cand=16384,
         gpu_batch_size=1024,
         sampling_func_L=low_fidelity,
-        sampling_func_H=high_fidelity,
         t_set_sim=t_set_sim,
         utility_mode=0, 
         sampling_mode=5,
@@ -151,6 +153,9 @@ if __name__ == "__main__":
     if args.flag_load_exp_data and os.path.exists(path_exp_data):
         mfbo_model.load_exp_data(filedir=filedir, filename=exp_data_filename)
     
+    # TODO: figure out the correct files to use for:
+    # results_filename: 
+    # exp_data_filename: 
     mfbo_model.active_learning(
         N=max_iter, 
         plot=False, 
