@@ -908,7 +908,7 @@ def load_polygon_path(filedir='poly_decomp', filename='result_polygon_path.yaml'
     
     yamlFile = os.path.join(filedir, filename)
     with open(yamlFile, "r") as input_stream:
-        yaml_in = yaml.load(input_stream)
+        yaml_in = yaml.load(input_stream, Loader=yaml.FullLoader)
         yaml_in = yaml_in[sample_name]
         points_raw = yaml_in["points"]
         for idx in points_raw.keys():
