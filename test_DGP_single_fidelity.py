@@ -123,7 +123,14 @@ if __name__ == "__main__":
     results_filename = f'result_{fileprefix}_{rand_seed_}.yaml'
     exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
     
-    # TODO grab t_set_sim from rachels file
+    # grab t_set_sim from rachels file
+    with open("traj_13_yaw_zero.npy", "rb") as f:
+        t_set_sim = np.load(f)
+        d_ordered = np.load(f)
+        d_ordered_yaw = np.load(f)
+        alpha_sim = np.load(f)
+ 
+    
     
     # TODO extract X_L and Y_L from gauravs file
     with open("traj_14_init_dataset.npy", "rb") as f:
