@@ -16,7 +16,7 @@ from mfboTrajectory.utilsConvexDecomp import *
 
 
 if __name__ == "__main__":
-    sample_name = ['traj_13', 'traj_14']
+    sample_name = ['traj_13']
     drone_model = "default"
     
     rand_seed = [123, 445, 678, 115, 92, 384, 992, 874, 490, 41, 83, 78, 991, 993, 994, 995, 996, 997, 998, 999]
@@ -117,13 +117,17 @@ if __name__ == "__main__":
     torch.manual_seed(rand_seed_)
     
     # filenames
-    fileprefix = "test_polytopes"
+    fileprefix = "test_traj_13_one_drone"
     filedir = f"./mfbo_data/{sample_name_}"
-    logprefix = '{sample_name_}/{fileprefix}/{rand_seed_}'
-    results_filename = f'result_{fileprefix}_{rand_seed_}.yaml'
-    exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
-    
-    # grab t_set_sim from rachels file
+    # logprefix = '{sample_name_}/{fileprefix}/{rand_seed_}'
+    logprefix = '{}/{}/{}'.format(sample_name_, fileprefix, rand_seed_)
+    # results_filename = f'result_{fileprefix}_{rand_seed_}.yaml'
+    results_filename = 'result_{}_{}.yaml'.format(fileprefix, rand_seed_)
+    # exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
+    exp_data_filename = 'exp_data_{}_{}.yaml'.format(fileprefix, rand_seed_)
+
+
+    # grab t_set, d_ordered, alpha_sim from rachels file
     with open("traj_13_yaw_zero.npy", "rb") as f:
         t_set_sim = np.load(f)
         d_ordered = np.load(f)
@@ -132,7 +136,15 @@ if __name__ == "__main__":
  
     
     
-    # TODO extract X_L and Y_L from gauravs file
+    # extract X_L and Y_L from gauravs file
+    with open("traj_13_init_dataset.npy", "rb") as f:
+        X_L = np.load(f)
+        Y_L = np.load(f)
+        print(X_L.shape)
+        print(Y_L.shape)
+        print("X_L: {}".format(X_L))
+        print("Y_L: {}".format(Y_L))
+
     # create agent
     mfbo_model = ActiveMFDGP(
         X_L=X_L, 
@@ -162,6 +174,7 @@ if __name__ == "__main__":
     # TODO: figure out the correct files to use for:
     # results_filename: 
     # exp_data_filename: 
+  
     mfbo_model.active_learning(
         N=max_iter, 
         plot=False, 
