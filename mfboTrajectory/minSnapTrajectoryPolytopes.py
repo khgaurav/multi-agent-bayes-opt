@@ -1259,8 +1259,8 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             sanity_check_t = self.sanity_check
 
         # Optimizae alpha
-        alpha = 7.6
-        dalpha = .1
+        alpha = 10.16
+        dalpha = 0.01
         alpha_tmp = alpha
         t_set_ret = copy.deepcopy(t_set)
         d_ordered_ret = copy.deepcopy(d_ordered)
@@ -1274,6 +1274,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         # increase alpha until flight is successful
         while True:
             print("loop 1")
+            print(f"alpha = {alpha}")
             t_set_opt = t_set * alpha
             d_ordered_opt = self.get_alpha_matrix(alpha,N_wp).dot(d_ordered)
             if np.all(d_ordered_yaw != None):
@@ -1284,14 +1285,14 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             # sanity check runs uav sim
             # if it crashes, increase time allocation
             if not sanity_check_t(t_set_opt, d_ordered_opt, d_ordered_yaw_opt):
-                alpha += 1.0
+                alpha += 0.01
             else:
                 break
             
         # decrease alpha
         while True:
             print("loop 2")
-            print(f"alpha = {alpha}, dalpha={dalpha}")
+            print(f"alpha = {alpha - dalpha}, dalpha={dalpha}")
             alpha_tmp = alpha - dalpha
             t_set_opt = t_set * alpha_tmp
             d_ordered_opt = self.get_alpha_matrix(alpha_tmp,N_wp).dot(d_ordered)
