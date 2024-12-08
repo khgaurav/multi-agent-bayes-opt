@@ -32,7 +32,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         super().__init__(*args, **kwargs)
         self.yaw_mode = kwargs.get('yaw_mode', 0)
         self.qp_optimizer = kwargs.get('qp_optimizer', 'osqp')
-        self.default_t_set_scale = 1.0
+        self.default_t_set_scale = 4.0 # CHANGED FROM 1.0
         
     ###############################################################################
     def save_trajectory_yaml(self, t_set, d_ordered, d_ordered_yaw=None, \
@@ -316,7 +316,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                 #         V_bias = V_norm.dot(v0)                    
                 #         A = np.hstack([V_norm[0]*V_t_fixed,V_norm[1]*V_t_fixed,V_norm[2]*V_t_fixed])
                 #         constraints.append(A*x == V_bias)
-                if waypoints[p_ii] == True:
+                if waypoints[p_ii_n] == True:
                     A = scipy.linalg.block_diag(V_t_fixed,V_t_fixed,V_t_fixed)
                     constraints.append(A*x == points[p_ii_n,:3])
 
@@ -1258,8 +1258,8 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             sanity_check_t = self.sanity_check
 
         # Optimizae alpha
-        alpha = 2.0
-        dalpha = 1
+        alpha = 7.6
+        dalpha = .1
         alpha_tmp = alpha
         t_set_ret = copy.deepcopy(t_set)
         d_ordered_ret = copy.deepcopy(d_ordered)
@@ -1283,7 +1283,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             # sanity check runs uav sim
             # if it crashes, increase time allocation
             if not sanity_check_t(t_set_opt, d_ordered_opt, d_ordered_yaw_opt):
-                alpha += 5.0
+                alpha += 1.0
             else:
                 break
             
