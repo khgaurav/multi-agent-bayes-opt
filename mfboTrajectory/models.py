@@ -179,14 +179,14 @@ class MFDeepGPC(AbstractDeepGP):
         
         self.likelihood = DeepLikelihood(BernoulliLikelihood())
     
-    def forward(self, inputs, fidelity=2, eval=False):
+    def forward(self, inputs, fidelity=1, eval=False):
         val = self.layers[0](inputs, eval=eval)
         for layer in self.layers[1:fidelity]:
             val = layer(val, inputs, eval=eval)
         val = MultivariateNormal(val.mean.squeeze(-1), val.lazy_covariance_matrix)
         return val
     
-    def predict(self, x, fidelity=2):
+    def predict(self, x, fidelity=1):
         with gpytorch.settings.fast_computations(log_prob=False, solves=False), torch.no_grad():
             preds = self(x, fidelity=fidelity, eval=True)
         
@@ -197,7 +197,7 @@ class MFDeepGPC(AbstractDeepGP):
         
         return self.likelihood.base_likelihood(val).mean.ge(0.5).cpu().numpy()
     
-    def predict_proba(self, x, fidelity=2, return_std=False):
+    def predict_proba(self, x, fidelity=1, return_std=False):
         with gpytorch.settings.fast_computations(log_prob=False, solves=False), torch.no_grad():
             preds = self(x, fidelity=fidelity, eval=True)
 
@@ -220,7 +220,7 @@ class MFDeepGPC(AbstractDeepGP):
         else:
             return f_star_min, np.sqrt(var_f_star), np.vstack((1 - pi_star, pi_star)).T
         
-    def predict_proba_MF(self, x, fidelity=1, C_L=1., C_H=10., beta=0.05, return_std=False, return_all=False):
+    def predict_proba_MF(self, x, fidelity=1, C_L=1., C_H = 10, beta=0.05, return_std=False, return_all=False):
         with gpytorch.settings.fast_computations(log_prob=False, solves=False), torch.no_grad():
             preds = self(x, fidelity=fidelity, eval=True)
             

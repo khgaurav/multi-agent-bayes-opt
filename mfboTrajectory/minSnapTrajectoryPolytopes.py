@@ -696,12 +696,13 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
     def wrapper_sanity_check(self, args):
         points = args[0]
         plane_pos_set = args[1]
-        t_set = args[2]
-        alpha_set = args[3]
-        flag_fixed_point = args[4]
+        waypoints = args[2]
+        t_set = args[3]
+        alpha_set = args[4]
+        flag_fixed_point = args[5]
         
         t_set_new, d_ordered, d_ordered_yaw = \
-            self.update_traj(t_set, points, plane_pos_set, alpha_set=alpha_set, \
+            self.update_traj(t_set, points, plane_pos_set, waypoints=waypoints, alpha_set=alpha_set, \
                 yaw_mode=self.yaw_mode, flag_run_sim=False, \
                 flag_fixed_end_point=True, \
                 flag_fixed_point=flag_fixed_point)

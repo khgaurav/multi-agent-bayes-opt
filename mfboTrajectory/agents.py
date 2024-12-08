@@ -64,25 +64,25 @@ class MFBOAgentBase():
         self.X_L = kwargs.get('X_L', None)
         self.Y_L = kwargs.get('Y_L', None)
         self.N_L = self.X_L.shape[0]
-        self.X_H = kwargs.get('X_H', None)
-        self.Y_H = kwargs.get('Y_H', None)
-        self.N_H = self.X_H.shape[0]
-        self.N_H_i = self.X_H.shape[0]
+        # self.X_H = kwargs.get('X_H', None)
+        # self.Y_H = kwargs.get('Y_H', None)
+        # self.N_H = self.X_H.shape[0]
+        # self.N_H_i = self.X_H.shape[0]
         self.lb_i = kwargs.get('lb_i', None)
         self.ub_i = kwargs.get('ub_i', None)
         self.rand_seed = kwargs.get('rand_seed', None)
         self.C_L = kwargs.get('C_L', None)
         self.C_H = kwargs.get('C_H', None)
         self.sampling_func_L = kwargs.get('sampling_func_L', None)
-        self.sampling_func_H = kwargs.get('sampling_func_H', None)
+        # self.sampling_func_H = kwargs.get('sampling_func_H', None)
         self.t_set_sim = kwargs.get('t_set_sim', None)
         self.traj_wp_sampler_mean = kwargs.get('traj_wp_sampler_mean', 0.5)
         self.traj_wp_sampler_var = kwargs.get('traj_wp_sampler_var', 0.2)
         
         self.delta_L = kwargs.get('delta_L', 0.8)
-        self.delta_H = kwargs.get('delta_H', 0.4)
+        # self.delta_H = kwargs.get('delta_H', 0.4)
         self.beta = kwargs.get('beta', 0.05)
-        self.dim = self.X_H.shape[1]
+        # self.dim = self.X_H.shape[1]
         self.iter_create_model = kwargs.get('iter_create_model', 200)
         self.N_cand = kwargs.get('N_cand', 1000)
 
@@ -98,7 +98,7 @@ class MFBOAgentBase():
         self.p_dim = 0
         
         if self.sampling_mode == 0:
-            self.sample_data = lambda N_sample: lhs(self.t_dim, N_sample)    
+            self.sample_data = lambda N_sample: lhs(self.t_dim, N_sample) # https://pythonhosted.org/pyDOE/randomized.html   
         elif self.sampling_mode == 1:
             self.traj_sampler = TrajSampler(N=self.t_dim, sigma=50.0)
             self.sample_data = lambda N_sample: self.traj_sampler.rsample(N_sample=N_sample)
@@ -121,7 +121,7 @@ class MFBOAgentBase():
             self.sample_data = lambda N_sample: lhs(self.t_dim, N_sample)
         else:
             raise "Not implemented"
-        self.X_cand = self.sample_data(self.N_cand)
+        self.X_cand = self.sample_data(self.N_cand) # TODO FIGURE OUT THE EXACT CONTENTS OF X_CAND BECASUE ITS INDEXED LATER WITH HIGH AND LOW FIDELTIY INDICES
         
         self.min_time = 1.0
         self.min_time_cand = 1.0
@@ -145,9 +145,9 @@ class MFBOAgentBase():
             self.X_L = np.array(yaml_in["X_L"])
             self.Y_L = np.array(yaml_in["Y_L"])
             self.N_L = self.X_L.shape[0]
-            self.X_H = np.array(yaml_in["X_H"])
-            self.Y_H = np.array(yaml_in["Y_H"])
-            self.N_H = self.X_H.shape[0]
+            # self.X_H = np.array(yaml_in["X_H"])
+            # self.Y_H = np.array(yaml_in["Y_H"])
+            # self.N_H = self.X_H.shape[0]
             self.X_cand = np.array(yaml_in["X_cand"])
 #             self.X_cand_H = np.array(yaml_in["X_cand_H"])
             self.min_time_array = yaml_in["min_time_array"]
@@ -161,10 +161,12 @@ class MFBOAgentBase():
             self.N_low_fidelity = np.int(yaml_in["N_low_fidelity"])
             
             prGreen("#################################################")
-            prGreen("Exp data loaded. start_iter: {}, N_L: {}, N_H: {}"\
-                    .format(self.start_iter, self.Y_L.shape[0], self.Y_H.shape[0]))
+            prGreen("Exp data loaded. start_iter: {}, N_L: {}"\
+                    .format(self.start_iter, self.Y_L.shape[0]))
+            # prGreen("Exp data loaded. start_iter: {}, N_L: {}, N_H: {}"\
+            #         .format(self.start_iter, self.Y_L.shape[0], self.Y_H.shape[0]))
             prGreen("#################################################")
-        
+    
     def save_exp_data(self, \
                   filedir='./mfbo_data/', \
                   filename='exp_data.yaml'):
@@ -180,12 +182,12 @@ class MFBOAgentBase():
         yaml_out.write("Y_L: [{}]\n".format(', '.join([str(x) for x in self.Y_L])))
         yaml_out.write("\n")
         
-        yaml_out.write("X_H:\n")
-        for it in range(self.X_H.shape[0]):
-            yaml_out.write("  - [{}]\n".format(', '.join([str(x) for x in self.X_H[it,:]])))
-        yaml_out.write("\n")
-        yaml_out.write("Y_H: [{}]\n".format(', '.join([str(x) for x in self.Y_H])))
-        yaml_out.write("\n")
+        # yaml_out.write("X_H:\n")
+        # for it in range(self.X_H.shape[0]):
+        #     yaml_out.write("  - [{}]\n".format(', '.join([str(x) for x in self.X_H[it,:]])))
+        # yaml_out.write("\n")
+        # yaml_out.write("Y_H: [{}]\n".format(', '.join([str(x) for x in self.Y_H])))
+        # yaml_out.write("\n")
         
         yaml_out.write("X_cand:\n")
         for it in range(self.X_cand.shape[0]):
@@ -225,6 +227,9 @@ class MFBOAgentBase():
     def forward_test(self):
         raise "Not Implemented"
     
+
+    ### LINE 5 IN ALGORITHM 1 ###
+    # generates candidate solution
     def compute_next_point_cand(self):
         if self.utility_mode == 0:
             return self.compute_next_point_cand_boundary()
@@ -233,6 +238,8 @@ class MFBOAgentBase():
         else:
             raise "Not Implemented"
     
+    # EXPLORATION
+    # Some helper function to generate the candidate solution @ boundary
     def compute_next_point_cand_boundary(self):        
         """
         Evaluates points to determine the next point to sample in the optimization process.
@@ -245,31 +252,44 @@ class MFBOAgentBase():
         Returns:
             None
         """
-        mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+        # Using MFDGP "multi-fideltiy deep gaussian process" to generate GP prior for low fidelity and high fidelity candidates
+        # Refer to paragraph after eq (21) in the "Multi-fideltiy black-box optimization for time-optimal quadrotor maneuvers"
+        mean_L, var_L, prob_cand_L, prob_cand_L_mean = self.forward_cand()
+        # print("mean_L: ",mean_L,"\nvar_L: ",var_L,"\nprob_cand_L: ",prob_cand_L,"\nprob_cant_L_mean: ", prob_cand_L_mean)
+        # mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+
         
+        # Equation (24)
+        # EXPLORATION
+        # initializing points to select the most uncertain sample near the decision boundary later on (will take max to do this later)
+        # C represents the cost of an evaluation at fidelity level
         ent_L = -np.abs(mean_L)/(var_L + 1e-9)*self.C_L
-        ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
+        # ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
         
         self.flag_found_ei = False
-        max_ei_idx_H = -1
-        max_ei_H = 0
+        # max_ei_idx_H = -1
+        # max_ei_H = 0
         max_ei_idx_L = -1
         max_ei_L = 0
         min_time_tmp = self.min_time
-        for it in range(self.X_cand.shape[0]):
+        for it in range(self.X_cand.shape[0]): #TODO: figure out whats going on here
             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
             min_time_tmp2 = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
             max_ei_tmp_L = (self.min_time-min_time_tmp2)*prob_cand_L[it]
-            max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
+            # max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
             if max_ei_tmp_L > max_ei_L and prob_cand_L[it] > 1-self.delta_L:
                 max_ei_L = max_ei_tmp_L
                 max_ei_idx_L = it
-            if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
-                max_ei_H = max_ei_tmp_H
-                max_ei_idx_H = it
-                min_time_tmp = min_time_tmp2
+            # if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
+            #     max_ei_H = max_ei_tmp_H
+            #     max_ei_idx_H = it
+            #     min_time_tmp = min_time_tmp2
         
         X_cand_discard = np.empty(0, dtype=np.int)
+        
+        # NOTE: im guessing this seciton commented out below is for 
+        # expected improvement with constraints
+
 #         if max_ei_idx_L != -1 or max_ei_idx_H != -1:
 #             self.flag_found_ei = True
 #             if max_ei_H < max_ei_L and self.N_low_fidelity < self.MAX_low_fidelity:
@@ -293,59 +313,82 @@ class MFBOAgentBase():
 #             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:],self.ub_i-self.lb_i)
 #             self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         
-        if self.N_low_fidelity < self.MAX_low_fidelity:
-            if max_ei_idx_L != -1 or max_ei_idx_H != -1:
-                self.flag_found_ei = True
-                if max_ei_H < max_ei_L:
-                    self.X_next = self.X_cand[max_ei_idx_L,:]
-                    self.X_next_fidelity = 0
-                else:
-                    self.X_next = self.X_cand[max_ei_idx_H,:]
-                    X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
-                    self.X_next_fidelity = 1
-                prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
-                self.min_time_cand = min_time_tmp
-            else:
-                if np.max(ent_H) < np.max(ent_L):
-                    self.X_next = self.X_cand[ent_L.argmax()]
-                    self.X_next_fidelity = 0
-                else:
-                    self.X_next = self.X_cand[ent_H.argmax()]
-                    X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
-                    self.X_next_fidelity = 1
-                prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
-                x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
-                self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+        # if num low fidelity points < 20 (which is set as the max later)
+        # if self.N_low_fidelity < self.MAX_low_fidelity: # TODO figure IF I REALLY NEED TO CHECK MAX FIDELITY BECASE WE ONLY HAVE LOW
+        if max_ei_idx_L != -1:
+            self.flag_found_ei = True
+            self.X_next = self.X_cand[max_ei_idx_L,:]
+            self.X_next_fidelity = 0
+            prPurple("ei_L: {}".format(max_ei_L))
+            self.min_time_cand = min_time_tmp
+        # if max_ei_idx_L != -1 or max_ei_idx_H != -1:
+        #     self.flag_found_ei = True
+        #     if max_ei_H < max_ei_L:
+        #         self.X_next = self.X_cand[max_ei_idx_L,:]
+        #         self.X_next_fidelity = 0
+        #     else:
+        #         self.X_next = self.X_cand[max_ei_idx_H,:]
+        #         X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
+        #         self.X_next_fidelity = 1
+        #     prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
+        #     self.min_time_cand = min_time_tmp
         else:
-            if max_ei_idx_H != -1:
-                self.flag_found_ei = True
-                self.X_next = self.X_cand[max_ei_idx_H,:]
-                X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
-                self.X_next_fidelity = 1
-                prPurple("ei_H: {}".format(max_ei_H))
-                self.min_time_cand = min_time_tmp
-            else:
-                self.X_next = self.X_cand[ent_H.argmax()]
-                X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
-                self.X_next_fidelity = 1
-                prGreen("ent_H: {}".format(np.max(ent_H)))
-                x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
-                self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+            self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            self.X_next_fidelity = 0
+            # NOTE: max(ent_H) & max(ent_L) select the most uncertain sample near the decision boundary for EXPLORATION
+            # if np.max(ent_H) < np.max(ent_L):
+            #     self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            #     self.X_next_fidelity = 0
+            # else:
+            #     self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            #     X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
+            #     self.X_next_fidelity = 1
+            # prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
+            prGreen("ent_L: {}".format(np.max(ent_L)))
+            # x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
+            self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+        # else: # ELSE IS FOR ALL HIGH FIDELITY STUFF, LOW FIDELITY POINTS EXCEED THE MAX NUM DOES NOT APPLY IF ONLY USING LOW FIDELITY
+        #     if max_ei_idx_H != -1:
+        #         self.flag_found_ei = True
+        #         self.X_next = self.X_cand[max_ei_idx_H,:]
+        #         X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
+        #         self.X_next_fidelity = 1
+        #         prPurple("ei_H: {}".format(max_ei_H))
+        #         self.min_time_cand = min_time_tmp
+        #     else:
+        #         self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+        #         X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
+        #         self.X_next_fidelity = 1
+        #         prGreen("ent_H: {}".format(np.max(ent_H)))
+        #         x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
+        #         self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+
         
         self.alpha_min_cand = copy.deepcopy(self.X_next)
         self.alpha_min_cand[:self.t_dim] = self.lb_i + np.multiply(self.X_next[:self.t_dim],self.ub_i-self.lb_i)
         if self.X_next_fidelity == 1:
             print("min time cand: {}, alpha: {}".format(self.min_time_cand, self.alpha_min_cand))
 
+    # EXPLOITATION
+    # Helper function to generate next candidate point EIC
+    # in exploitation, utilize: "Expected Improvement with Constraints"
     def compute_next_point_cand_eic(self):
-        mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+        # Using MFDGP "multi-fideltiy deep gaussian process" to generate GP prior for low fidelity and high fidelity candidates
+        # Refer to paragraph after eq (21) in the "Multi-fideltiy black-box optimization for time-optimal quadrotor maneuvers"
+        mean_L, var_L, prob_cand_L, prob_cand_L_mean = self.forward_cand()
+        # mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
+
         
+        # Equation (24)
+        # EXPLORATION??
+        # TODO: Figure out why these are still calculated in the EXPLOITATION STEP
+        # initializing points to select the most uncertain sample near the decision boundary later on (will take max to do this later)
         ent_L = -np.abs(mean_L)/(var_L + 1e-9)*self.C_L
-        ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
+        # ent_H = -np.abs(mean_H)/(var_H + 1e-9)*self.C_H
         
         self.flag_found_ei = False
-        max_ei_idx_H = -1
-        max_ei_H = 0
+        # max_ei_idx_H = -1
+        # max_ei_H = 0
         max_ei_idx_L = -1
         max_ei_L = 0
         min_time_tmp = self.min_time
@@ -353,20 +396,20 @@ class MFBOAgentBase():
             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
             min_time_tmp2 = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
             max_ei_tmp_L = (self.min_time-min_time_tmp2)*prob_cand_L[it]
-            max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
+            # max_ei_tmp_H = (self.min_time-min_time_tmp2)*prob_cand_H[it]
             if max_ei_tmp_L > max_ei_L and prob_cand_L[it] > 1-self.delta_L:
                 max_ei_L = max_ei_tmp_L
                 max_ei_idx_L = it
-            if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
-                max_ei_H = max_ei_tmp_H
-                max_ei_idx_H = it
-                min_time_tmp = min_time_tmp2
+            # if max_ei_tmp_H > max_ei_H and prob_cand_H[it] > 1-self.delta_H:
+            #     max_ei_H = max_ei_tmp_H
+            #     max_ei_idx_H = it
+            #     min_time_tmp = min_time_tmp2
         
         ########## No boundary search ###########################################
         max_pb_idx_L = -1
         max_pb_L = 0
-        max_pb_idx_H = -1
-        max_pb_H = 0
+        # max_pb_idx_H = -1
+        # max_pb_H = 0
         min_time_tmp_pb = self.min_time
         for it in range(self.X_cand.shape[0]):
             x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
@@ -374,83 +417,96 @@ class MFBOAgentBase():
             if self.min_time >= min_time_tmp2 and prob_cand_L[it] > max_pb_L:
                 max_pb_L = prob_cand_L[it]
                 max_pb_idx_L = it
-            if self.min_time >= min_time_tmp2 and prob_cand_H[it] > max_pb_H:
-                max_pb_H = prob_cand_H[it]
-                max_pb_idx_H = it
-                min_time_tmp_pb = min_time_tmp2
+            # if self.min_time >= min_time_tmp2 and prob_cand_H[it] > max_pb_H:
+            #     max_pb_H = prob_cand_H[it]
+            #     max_pb_idx_H = it
+            #     min_time_tmp_pb = min_time_tmp2
         
         X_cand_discard = np.empty(0, dtype=np.int)
-        if max_ei_idx_L != -1 or max_ei_idx_H != -1:
+        if max_ei_idx_L != -1: # or max_ei_idx_H != -1: # 
             self.flag_found_ei = True
-            if max_ei_H < max_ei_L and self.N_low_fidelity < self.MAX_low_fidelity:
-                self.X_next = self.X_cand[max_ei_idx_L,:]
-                self.X_next_fidelity = 0
-            else:
-                self.X_next = self.X_cand[max_ei_idx_H,:]
-                X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
-                self.X_next_fidelity = 1
-            prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
+            # if max_ei_H < max_ei_L and self.N_low_fidelity < self.MAX_low_fidelity:
+            self.X_next = self.X_cand[max_ei_idx_L,:]
+            self.X_next_fidelity = 0
+            # else:
+            #     self.X_next = self.X_cand[max_ei_idx_H,:]
+            #     X_cand_discard = np.append(X_cand_discard, max_ei_idx_H)
+            #     self.X_next_fidelity = 1
+            # prPurple("ei_L: {}, ei_H: {}".format(max_ei_L,max_ei_H))
+            prPurple("ei_L: {}".format(max_ei_L))
             self.min_time_cand = min_time_tmp
         ########## No boundary search ###########################################
-        elif max_pb_idx_L != -1 or max_pb_idx_H != -1:
-            if max_pb_H < max_pb_L and self.N_low_fidelity < self.MAX_low_fidelity:
-                self.X_next = self.X_cand[max_pb_idx_L,:]
-                X_cand_discard = np.append(X_cand_discard, max_pb_idx_L)
-                self.X_next_fidelity = 0
-            else:
-                self.X_next = self.X_cand[max_pb_idx_H,:]
-                X_cand_discard = np.append(X_cand_discard, max_pb_idx_H)
-                self.X_next_fidelity = 1
-            prPurple("pb_H: {}, pb_L: {}".format(max_pb_H,max_pb_L))
+        elif max_pb_idx_L != -1: # or max_pb_idx_H != -1:
+            # if max_pb_H < max_pb_L and self.N_low_fidelity < self.MAX_low_fidelity:
+            self.X_next = self.X_cand[max_pb_idx_L,:]
+            X_cand_discard = np.append(X_cand_discard, max_pb_idx_L)
+            self.X_next_fidelity = 0
+            # else:
+            #     self.X_next = self.X_cand[max_pb_idx_H,:]
+            #     X_cand_discard = np.append(X_cand_discard, max_pb_idx_H)
+            #     self.X_next_fidelity = 1
+            # prPurple("pb_H: {}, pb_L: {}".format(max_pb_H,max_pb_L))
+            prPurple("pb_L: {}".format(max_pb_L))
             self.min_time_cand = min_time_tmp_pb
         else:
-            if np.max(ent_H) < np.max(ent_L) and self.N_low_fidelity < self.MAX_low_fidelity:
-                self.X_next = self.X_cand[ent_L.argmax()]
-                self.X_next_fidelity = 0
-            else:
-                self.X_next = self.X_cand[ent_H.argmax()]
-                X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
-                self.X_next_fidelity = 1
-            prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
-            x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
+            # NOTE: max(ent_H) & max(ent_L) select the most uncertain sample near the decision boundary for EXPLORATION
+            # if uncertainty of low fidelity point is greater than high and low fidelity points are lower than the max:
+            # if np.max(ent_H) < np.max(ent_L) and self.N_low_fidelity < self.MAX_low_fidelity: 
+            self.X_next = self.X_cand[ent_L.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            self.X_next_fidelity = 0
+            # else: #TODO COMMENT OUT THIS ELSE B/C WE CANT USE HIGH FIDELITY BC WE DONT HAVE
+            #     self.X_next = self.X_cand[ent_H.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+            #     X_cand_discard = np.append(X_cand_discard, ent_H.argmax())
+            #     self.X_next_fidelity = 1
+            # prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
+            prGreen("ent_L: {}".format(np.max(ent_L)))
+            x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i) # TODO figure out what to change here for candidate stuff
             self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         
         self.alpha_min_cand = self.lb_i + np.multiply(self.X_next[:,:self.t_dim],self.ub_i-self.lb_i)
-        if self.X_next_fidelity == 1:
+        if self.X_next_fidelity == 1: # TODO (1 means high fidelity), figure out if i can comment this out
             print("min time cand: {}, alpha: {}".format(self.min_time_cand, self.alpha_min_cand))
 
+    # TODO: Figure out what this corresponds to in pseudocode
     def append_next_point(self):
         X_next_denorm = self.lb_i + np.multiply(self.X_next[:self.t_dim],self.ub_i-self.lb_i)
         X_next_time = X_next_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         print("X_next: {}".format(X_next_denorm))
         print("X_next time: {}".format(X_next_time))
-        if self.X_next_fidelity == 1:
-            self.X_H = np.vstack((self.X_H, self.X_next))
-            Y_next = 1.0*self.sampling_func_H(self.X_next[None,:])
-            self.Y_H = np.concatenate((self.Y_H, np.array(Y_next)))
-            self.N_H += 1
-            if self.min_time > self.min_time_cand and Y_next >= 1:
-                self.min_time = self.min_time_cand
-                self.alpha_min = self.alpha_min_cand
-                prYellow("min time: {}, alpha: {}".format(self.min_time, self.alpha_min))
-            self.N_low_fidelity = 0
-        else:
-            self.N_low_fidelity += 1
-            print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
-            self.X_L = np.vstack((self.X_L, self.X_next))
-            Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])
-            self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))
-            self.N_L += 1
+        # if self.X_next_fidelity == 1: #TODO comment out because this is for high fidelty
+        #     self.X_H = np.vstack((self.X_H, self.X_next))
+        #     Y_next = 1.0*self.sampling_func_H(self.X_next[None,:])
+        #     self.Y_H = np.concatenate((self.Y_H, np.array(Y_next)))
+        #     self.N_H += 1
+        #     if self.min_time > self.min_time_cand and Y_next >= 1:
+        #         self.min_time = self.min_time_cand
+        #         self.alpha_min = self.alpha_min_cand
+        #         prYellow("min time: {}, alpha: {}".format(self.min_time, self.alpha_min))
+        #     self.N_low_fidelity = 0
+        # else:
+        #     self.N_low_fidelity += 1
+        #     print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
+        #     self.X_L = np.vstack((self.X_L, self.X_next))
+        #     Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])
+        #     self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))
+        #     self.N_L += 1
+        self.N_low_fidelity += 1
+        print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
+        self.X_L = np.vstack((self.X_L, self.X_next))
+        Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])
+        self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))
+        self.N_L += 1
         self.exp_result_array.append(Y_next[0])
-        rel_snap = 1.0*self.sampling_func_H(self.X_next[None,:], return_snap=True)
-        self.rel_snap_array.append(rel_snap[0])
-        print("rel_snap: {}".format(rel_snap[0]))
+        # rel_snap = 1.0*self.sampling_func_H(self.X_next[None,:], return_snap=True)
+        # self.rel_snap_array.append(rel_snap[0])
+        # print("rel_snap: {}".format(rel_snap[0]))
 #         if rel_snap[0] < 0.999:
 #             prRed("Wrong rel snap: {}".format(rel_snap[0]))
 #             prRed("X_next_denorm: {}".format(X_next_denorm))
 #             raise("ERROR REL SNAP")
             
-        print("N_L: {}, N_H: {}".format(self.N_L, self.N_H))
+        # print("N_L: {}, N_H: {}".format(self.N_L, self.N_H))
+        print("N_L: {}".format(self.N_L))
         
         if self.X_cand.shape[0] < self.N_cand:
             print("Remaining X_cand: {}".format(self.X_cand.shape[0]))
@@ -472,11 +528,13 @@ class MFBOAgentBase():
                 low_idx += 1
             yaml_out.write("  found_ei: {}\n".format(self.found_ei_array[it]))
             yaml_out.write("  exp_result: {}\n".format(self.exp_result_array[it]))
+            # print(self.rel_snap_array)
             yaml_out.write("  rel_snap: {}\n".format(self.rel_snap_array[it]))
             yaml_out.write("  min_time: {}\n".format(self.min_time_array[it]))
             yaml_out.write("  alpha_cand: [{}]\n\n".format(','.join([str(x) for x in self.alpha_cand_array[it]])))
         yaml_out.close()
 
+    ### LINES 5-7 IN ALGORITHM 1 ###
     def active_learning(self, N=15, MAX_low_fidelity=20, plot=False, filedir='./mfbo_data', \
                         filename_plot='active_learning_%i.png', \
                         filename_result='result.yaml', \
@@ -506,8 +564,10 @@ class MFBOAgentBase():
         main_iter_start = self.start_iter
         self.min_time = self.min_time_array[-1]
         
+        # Save results if the starting iteration is the last one
         if main_iter_start == N-1:
             self.save_result_data(filedir, filename_result)
+        # Main loop for active learning iterations
 
         for main_iter in range(main_iter_start, N):
             prGreen("#################################################")
@@ -515,55 +575,59 @@ class MFBOAgentBase():
             self.X_next_fidelity = 0
             if not hasattr(self, 'N_low_fidelity'):
                 self.N_low_fidelity = 0
+            # If the next point is not found, create a model and compute the next point
             num_found_ei = 0
+                    # Create a model
             num_low_fidelity = self.N_low_fidelity
-            while self.X_next_fidelity == 0:
-                try:
-                    self.create_model(num_epochs=self.iter_create_model)
-                    self.compute_next_point_cand()
-                except RuntimeError as e:
-                    # if 'out of memory' in str(e):
-                    #     print('| WARNING: ran out of memory, retrying batch')
-                    #     for p in self.model.parameters():
-                    #         if p.grad is not None:
-                    #             del p.grad  # free some memory
-                    #     torch.cuda.empty_cache()
-                    #     self.create_model(num_epochs=self.iter_create_model)
-                    #     self.compute_next_point_cand()
-                    # elif 'cholesky_cuda' in str(e):
-                    #     print('| WARNING: cholesky_cuda')                        
-                    #     if hasattr(self, 'clf'):
-                    #         del self.clf                        
-                    #     if hasattr(self, 'feature_model'):
-                    #         del self.feature_model
-                    #     self.create_model()
-                    #     self.compute_next_point_cand()
-                    # else:
-                    raise e
-                self.append_next_point()
-                if plot:
-                    prefix = self.model_prefix.split("/")[1]+"_"+str(self.rand_seed)
-                    filepath = os.path.join(filedir,prefix)
-                    if not os.path.exists(filepath):
-                        os.makedirs(filepath)
-                    filepath = os.path.join(filepath,filename_plot%main_iter)
-                    self.plot(filename = filepath)
+                    # Compute the next point
+            # while self.X_next_fidelity == 0: # since only have low fidelity points, will loop infinately if not commented out
+            try:
+                self.create_model(num_epochs=self.iter_create_model)
+                self.compute_next_point_cand()
+            except RuntimeError as e:
+                # if 'out of memory' in str(e):
+                #     print('| WARNING: ran out of memory, retrying batch')
+                #     for p in self.model.parameters():
+                #         if p.grad is not None:
+                #             del p.grad  # free some memory
+                #     torch.cuda.empty_cache()
+                #     self.create_model(num_epochs=self.iter_crea`te_model)
+                #     self.compute_next_point_cand()
+                # elif 'cholesky_cuda' in str(e):
+                #     print('| WARNING: cholesky_cuda')                        
+                #     if hasattr(self, 'clf'):
+                #         del self.clf                        
+                #     if hasattr(self, 'feature_model'):
+                #         del self.feature_model
+                #     self.create_model()
+                #     self.compute_next_point_cand()
+                # else:
+                raise e
+            # Append the next point
+            self.append_next_point()
+            if plot:
+                prefix = self.model_prefix.split("/")[1]+"_"+str(self.rand_seed)
+                filepath = os.path.join(filedir,prefix)
+                if not os.path.exists(filepath):
+                    os.makedirs(filepath)
+                filepath = os.path.join(filepath,filename_plot%main_iter)
+                self.plot(filename = filepath)
 
-                self.min_time_array.append(self.min_time)
-                self.alpha_cand_array.append(self.alpha_min_cand)
-                self.fidelity_array.append(self.X_next_fidelity)
-                if self.flag_found_ei:
-                    self.found_ei_array.append(1)
-                    num_found_ei += 1
-                else:
-                    self.found_ei_array.append(0)
-                num_low_fidelity += 1
-                
-                if self.X_next_fidelity == 0:
-                    self.start_iter = main_iter
-                else:
-                    self.start_iter = main_iter+1
-                self.save_exp_data(filedir, filename_exp)
+            self.min_time_array.append(self.min_time)
+            self.alpha_cand_array.append(self.alpha_min_cand)
+            self.fidelity_array.append(self.X_next_fidelity)
+            if self.flag_found_ei:
+                self.found_ei_array.append(1)
+                num_found_ei += 1
+            else:
+                self.found_ei_array.append(0)
+            num_low_fidelity += 1
+            
+            if self.X_next_fidelity == 0:
+                self.start_iter = main_iter
+            else:
+                self.start_iter = main_iter+1
+            self.save_exp_data(filedir, filename_exp)
 
             num_failure = 0
             for it in range(len(self.min_time_array)):
@@ -579,8 +643,8 @@ class MFBOAgentBase():
                 if self.fidelity_array[it] == 1 and self.min_time_array[it] == self.min_time:
                     min_time_idx = it
                     break
-            self.writer.add_scalar('/rel_snap', self.rel_snap_array[min_time_idx], main_iter+1)
-        
+            self.writer.add_scalar('/rel_snap', self.rel_snap_array[min_time_idx], main_iter+1) #TODO fix error here, snap array is literally [1], need to debug
+            # TODO: snap is dependent upon the high fideltit sampling funciton, do i just swtich to low?
             self.save_result_data(filedir, filename_result)
         return
 
@@ -614,10 +678,10 @@ class MFBOAgentBase():
         plt.scatter(X_L_time_[:,0], X_L_time_[:,1],c=self.Y_L[:],cmap='coolwarm_r', \
                     marker='x',s=50,label='low fidelity sample')
 
-        X_H_denorm_ = np.repeat(np.expand_dims(self.lb_i,0),self.X_H.shape[0],axis=0) + np.multiply(self.X_H, np.repeat(np.expand_dims(self.ub_i-self.lb_i,0),self.X_H.shape[0],axis=0))
-        X_H_time_ = np.multiply(X_H_denorm_, np.repeat(np.expand_dims(self.t_set_sim,0),X_H_denorm_.shape[0],axis=0))
-        plt.scatter(X_H_time_[:,0], X_H_time_[:,1],c=self.Y_H[:],cmap='coolwarm_r',\
-                    s=150,edgecolors='k',label='high fidelity sample')
+        # X_H_denorm_ = np.repeat(np.expand_dims(self.lb_i,0),self.X_H.shape[0],axis=0) + np.multiply(self.X_H, np.repeat(np.expand_dims(self.ub_i-self.lb_i,0),self.X_H.shape[0],axis=0))
+        # X_H_time_ = np.multiply(X_H_denorm_, np.repeat(np.expand_dims(self.t_set_sim,0),X_H_denorm_.shape[0],axis=0))
+        # plt.scatter(X_H_time_[:,0], X_H_time_[:,1],c=self.Y_H[:],cmap='coolwarm_r',\
+        #             s=150,edgecolors='k',label='high fidelity sample')
         
         # X_best_denorm_ = lb_i + np.multiply(X_best, ub_i-lb_i)
         X_best_time_ = np.multiply(self.alpha_min, self.t_set_sim)
@@ -674,13 +738,16 @@ class ActiveMFDGP(MFBOAgentBase):
         self.train_dataset_L = TensorDataset(self.train_x_L, self.train_y_L)
         self.train_loader_L = DataLoader(self.train_dataset_L, batch_size=self.batch_size, shuffle=True)
 
-        self.train_x_H = torch.tensor(self.X_H).float()#.cuda()
-        self.train_y_H = torch.tensor(self.Y_H).float()#.cuda()
-        self.train_dataset_H = TensorDataset(self.train_x_H, self.train_y_H)
-        self.train_loader_H = DataLoader(self.train_dataset_H, batch_size=self.batch_size, shuffle=True)
+        # self.train_x_H = torch.tensor(self.X_H).float()#.cuda()
+        # self.train_y_H = torch.tensor(self.Y_H).float()#.cuda()
+        # self.train_dataset_H = TensorDataset(self.train_x_H, self.train_y_H)
+        # self.train_loader_H = DataLoader(self.train_dataset_H, batch_size=self.batch_size, shuffle=True)
         
-        train_x = [self.train_x_L, self.train_x_H]
-        train_y = [self.train_y_L, self.train_y_H]
+        train_x = [self.train_x_L]
+        # train_x = [self.train_x_L, self.train_x_H]
+
+        train_y = [self.train_y_L]
+        # train_y = [self.train_y_L, self.train_y_H]
         
         if not hasattr(self, 'clf'):
             self.clf = MFDeepGPC(train_x, train_y, num_inducing=128)#.cuda()
@@ -688,10 +755,12 @@ class ActiveMFDGP(MFBOAgentBase):
         optimizer = torch.optim.Adam([
             {'params': self.clf.parameters()},
         ], lr=0.001)
-        mll = VariationalELBO(self.clf.likelihood, self.clf, self.train_x_L.shape[-2]+self.train_x_H.shape[-2])
-
+        mll = VariationalELBO(self.clf.likelihood, self.clf, self.train_x_L.shape[-2])
+        # mll = VariationalELBO(self.clf.likelihood, self.clf, self.train_x_L.shape[-2]+self.train_x_H.shape[-2])
         start_time = time.time()
-        N_data = self.X_L.shape[0] + self.X_H.shape[0]
+        N_data = self.X_L.shape[0]
+        # N_data = self.X_L.shape[0] + self.X_H.shape[0]
+
         with gpytorch.settings.fast_computations(log_prob=False, solves=False):
             for i in range(num_epochs):
                 avg_loss = 0
@@ -703,15 +772,15 @@ class ActiveMFDGP(MFBOAgentBase):
                     avg_loss += loss.item()/N_data
                     optimizer.step()
 
-                for minibatch_i, (x_batch, y_batch) in enumerate(self.train_loader_H):
-                    optimizer.zero_grad()
-                    output = self.clf(x_batch, fidelity=2)
-                    loss = -mll(output, y_batch)
-                    output_L = self.clf(x_batch, fidelity=1)
-                    loss -= mll(output_L, y_batch)
-                    avg_loss += loss.item()/N_data
-                    loss.backward(retain_graph=True)
-                    optimizer.step()
+                # for minibatch_i, (x_batch, y_batch) in enumerate(self.train_loader_H):
+                #     optimizer.zero_grad()
+                #     output = self.clf(x_batch, fidelity=2)
+                #     loss = -mll(output, y_batch)
+                #     output_L = self.clf(x_batch, fidelity=1)
+                #     loss -= mll(output_L, y_batch)
+                #     avg_loss += loss.item()/N_data
+                #     loss.backward(retain_graph=True)
+                #     optimizer.step()
 
                 if (i+1)%20 == 0 or i == 0:
                     print('Epoch %d/%d - Loss: %.3f' % (i+1, num_epochs, avg_loss))
@@ -725,6 +794,7 @@ class ActiveMFDGP(MFBOAgentBase):
         
         print(" - Time: %.3f" % (time.time() - start_time))
     
+    # line 8 of Algorithm 1 (i think)
     def forward_cand(self):
         self.X_cand = self.sample_data(self.N_cand)
         if self.sampling_mode >= 2:
@@ -742,23 +812,28 @@ class ActiveMFDGP(MFBOAgentBase):
         var_L = np.empty(0)
         prob_cand_L = np.empty(0)
         prob_cand_L_mean = np.empty(0)
-        mean_H = np.empty(0)
-        var_H = np.empty(0)
-        prob_cand_H = np.empty(0)
+        # mean_H = np.empty(0)
+        # var_H = np.empty(0)
+        # prob_cand_H = np.empty(0)
         
-        for minibatch_i, (x_batch,) in enumerate(test_loader):
-            p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+        for minibatch_i, (x_batch,) in enumerate(test_loader): #TODO
+            p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_L=self.C_L, beta=self.beta, return_all=True)
+            # p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+
             mean_L = np.append(mean_L, m)
             var_L = np.append(var_L, v)
             prob_cand_L = np.append(prob_cand_L, p[:,1])
             prob_cand_L_mean = np.append(prob_cand_L_mean, pm[:,1])
         
-            p_H, m_H, v_H, pm_H = self.clf.predict_proba_MF(x_batch, fidelity=2, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
-            mean_H = np.append(mean_H, m_H)
-            var_H = np.append(var_H, v_H)
-            prob_cand_H = np.append(prob_cand_H, p_H[:,1])
+            # p_H, m_H, v_H, pm_H = self.clf.predict_proba_MF(x_batch, fidelity=2, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+            # p_H, m_H, v_H, pm_H = self.clf.predict_proba_MF(x_batch, fidelity=2, C_H=self.C_H, C_L=self.C_L, beta=self.beta, return_all=True)
+            # mean_H = np.append(mean_H, m_H)
+            # var_H = np.append(var_H, v_H)
+            # prob_cand_H = np.append(prob_cand_H, p_H[:,1])
         
-        return mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean
+        return mean_L, var_L, prob_cand_L, prob_cand_L_mean
+        # return mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean
+
     
     def forward_test(self):
         test_x_L = torch.tensor(self.X_test).float()#.cuda()
