@@ -98,7 +98,7 @@ class MFBOAgentBase():
         self.p_dim = 0
         
         if self.sampling_mode == 0:
-            self.sample_data = lambda N_sample: lhs(self.t_dim, N_sample)    
+            self.sample_data = lambda N_sample: lhs(self.t_dim, N_sample) # https://pythonhosted.org/pyDOE/randomized.html   
         elif self.sampling_mode == 1:
             self.traj_sampler = TrajSampler(N=self.t_dim, sigma=50.0)
             self.sample_data = lambda N_sample: self.traj_sampler.rsample(N_sample=N_sample)
@@ -255,6 +255,7 @@ class MFBOAgentBase():
         # Using MFDGP "multi-fideltiy deep gaussian process" to generate GP prior for low fidelity and high fidelity candidates
         # Refer to paragraph after eq (21) in the "Multi-fideltiy black-box optimization for time-optimal quadrotor maneuvers"
         mean_L, var_L, prob_cand_L, prob_cand_L_mean = self.forward_cand()
+        # print("mean_L: ",mean_L,"\nvar_L: ",var_L,"\nprob_cand_L: ",prob_cand_L,"\nprob_cant_L_mean: ", prob_cand_L_mean)
         # mean_L, var_L, prob_cand_L, mean_H, var_H, prob_cand_H, prob_cand_L_mean = self.forward_cand()
 
         
@@ -344,7 +345,7 @@ class MFBOAgentBase():
             #     self.X_next_fidelity = 1
             # prGreen("ent_L: {}, ent_H: {}".format(np.max(ent_L),np.max(ent_H)))
             prGreen("ent_L: {}".format(np.max(ent_L)))
-            # x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i) #TODO FIGURE OUT FORMAT OF X_CAND
+            # x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i)
             self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
         # else: # ELSE IS FOR ALL HIGH FIDELITY STUFF, LOW FIDELITY POINTS EXCEED THE MAX NUM DOES NOT APPLY IF ONLY USING LOW FIDELITY
         #     if max_ei_idx_H != -1:
@@ -527,6 +528,7 @@ class MFBOAgentBase():
                 low_idx += 1
             yaml_out.write("  found_ei: {}\n".format(self.found_ei_array[it]))
             yaml_out.write("  exp_result: {}\n".format(self.exp_result_array[it]))
+            # print(self.rel_snap_array)
             yaml_out.write("  rel_snap: {}\n".format(self.rel_snap_array[it]))
             yaml_out.write("  min_time: {}\n".format(self.min_time_array[it]))
             yaml_out.write("  alpha_cand: [{}]\n\n".format(','.join([str(x) for x in self.alpha_cand_array[it]])))
@@ -578,54 +580,54 @@ class MFBOAgentBase():
                     # Create a model
             num_low_fidelity = self.N_low_fidelity
                     # Compute the next point
-            while self.X_next_fidelity == 0:
-                try:
-                    self.create_model(num_epochs=self.iter_create_model)
-                    self.compute_next_point_cand()
-                except RuntimeError as e:
-                    # if 'out of memory' in str(e):
-                    #     print('| WARNING: ran out of memory, retrying batch')
-                    #     for p in self.model.parameters():
-                    #         if p.grad is not None:
-                    #             del p.grad  # free some memory
-                    #     torch.cuda.empty_cache()
-                    #     self.create_model(num_epochs=self.iter_create_model)
-                    #     self.compute_next_point_cand()
-                    # elif 'cholesky_cuda' in str(e):
-                    #     print('| WARNING: cholesky_cuda')                        
-                    #     if hasattr(self, 'clf'):
-                    #         del self.clf                        
-                    #     if hasattr(self, 'feature_model'):
-                    #         del self.feature_model
-                    #     self.create_model()
-                    #     self.compute_next_point_cand()
-                    # else:
-                    raise e
-                # Append the next point
-                self.append_next_point()
-                if plot:
-                    prefix = self.model_prefix.split("/")[1]+"_"+str(self.rand_seed)
-                    filepath = os.path.join(filedir,prefix)
-                    if not os.path.exists(filepath):
-                        os.makedirs(filepath)
-                    filepath = os.path.join(filepath,filename_plot%main_iter)
-                    self.plot(filename = filepath)
+            # while self.X_next_fidelity == 0: # since only have low fidelity points, will loop infinately if not commented out
+            try:
+                self.create_model(num_epochs=self.iter_create_model)
+                self.compute_next_point_cand()
+            except RuntimeError as e:
+                # if 'out of memory' in str(e):
+                #     print('| WARNING: ran out of memory, retrying batch')
+                #     for p in self.model.parameters():
+                #         if p.grad is not None:
+                #             del p.grad  # free some memory
+                #     torch.cuda.empty_cache()
+                #     self.create_model(num_epochs=self.iter_crea`te_model)
+                #     self.compute_next_point_cand()
+                # elif 'cholesky_cuda' in str(e):
+                #     print('| WARNING: cholesky_cuda')                        
+                #     if hasattr(self, 'clf'):
+                #         del self.clf                        
+                #     if hasattr(self, 'feature_model'):
+                #         del self.feature_model
+                #     self.create_model()
+                #     self.compute_next_point_cand()
+                # else:
+                raise e
+            # Append the next point
+            self.append_next_point()
+            if plot:
+                prefix = self.model_prefix.split("/")[1]+"_"+str(self.rand_seed)
+                filepath = os.path.join(filedir,prefix)
+                if not os.path.exists(filepath):
+                    os.makedirs(filepath)
+                filepath = os.path.join(filepath,filename_plot%main_iter)
+                self.plot(filename = filepath)
 
-                self.min_time_array.append(self.min_time)
-                self.alpha_cand_array.append(self.alpha_min_cand)
-                self.fidelity_array.append(self.X_next_fidelity)
-                if self.flag_found_ei:
-                    self.found_ei_array.append(1)
-                    num_found_ei += 1
-                else:
-                    self.found_ei_array.append(0)
-                num_low_fidelity += 1
-                
-                if self.X_next_fidelity == 0:
-                    self.start_iter = main_iter
-                else:
-                    self.start_iter = main_iter+1
-                self.save_exp_data(filedir, filename_exp)
+            self.min_time_array.append(self.min_time)
+            self.alpha_cand_array.append(self.alpha_min_cand)
+            self.fidelity_array.append(self.X_next_fidelity)
+            if self.flag_found_ei:
+                self.found_ei_array.append(1)
+                num_found_ei += 1
+            else:
+                self.found_ei_array.append(0)
+            num_low_fidelity += 1
+            
+            if self.X_next_fidelity == 0:
+                self.start_iter = main_iter
+            else:
+                self.start_iter = main_iter+1
+            self.save_exp_data(filedir, filename_exp)
 
             num_failure = 0
             for it in range(len(self.min_time_array)):
@@ -641,8 +643,8 @@ class MFBOAgentBase():
                 if self.fidelity_array[it] == 1 and self.min_time_array[it] == self.min_time:
                     min_time_idx = it
                     break
-            self.writer.add_scalar('/rel_snap', self.rel_snap_array[min_time_idx], main_iter+1)
-        
+            self.writer.add_scalar('/rel_snap', self.rel_snap_array[min_time_idx], main_iter+1) #TODO fix error here, snap array is literally [1], need to debug
+            # TODO: snap is dependent upon the high fideltit sampling funciton, do i just swtich to low?
             self.save_result_data(filedir, filename_result)
         return
 

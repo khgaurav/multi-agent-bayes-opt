@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # EDIT: 
 
     low_fidelity = lambda x, debug=True, multicore=False: \
-        meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
+        meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, waypoints, debug, lb=lb, ub=ub, multicore=multicore)
     # high_fidelity = lambda x, return_snap=False, multicore=False: \
     #     meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
     #         return_snap=return_snap, multicore=multicore, \
@@ -126,15 +126,12 @@ if __name__ == "__main__":
     # exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
     exp_data_filename = 'exp_data_{}_{}.yaml'.format(fileprefix, rand_seed_)
 
-
     # grab t_set, d_ordered, alpha_sim from rachels file
     with open("traj_13_yaw_zero.npy", "rb") as f:
         t_set_sim = np.load(f)
         d_ordered = np.load(f)
         d_ordered_yaw = np.load(f)
         alpha_sim = np.load(f)
- 
-    
     
     # extract X_L and Y_L from gauravs file
     with open("traj_13_init_dataset.npy", "rb") as f:
@@ -167,14 +164,19 @@ if __name__ == "__main__":
         iter_create_model=200
     )
     
+    # If path exists for experimental data
     path_exp_data = os.path.join(filedir, exp_data_filename)
     if args.flag_load_exp_data and os.path.exists(path_exp_data):
+        # Load exp data
         mfbo_model.load_exp_data(filedir=filedir, filename=exp_data_filename)
     
     # TODO: figure out the correct files to use for:
     # results_filename: 
     # exp_data_filename: 
   
+    # changing filename for active learning stuff
+    filedir = os.path.join(os.getcwd(),"mfbo_data")
+
     mfbo_model.active_learning(
         N=max_iter, 
         plot=False, 
