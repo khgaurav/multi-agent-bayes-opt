@@ -177,6 +177,8 @@ if __name__ == "__main__":
     # changing filename for active learning stuff
     filedir = os.path.join(os.getcwd(),"mfbo_data")
 
+
+    print("started ")
     mfbo_model.active_learning(
         N=max_iter, 
         plot=False, 

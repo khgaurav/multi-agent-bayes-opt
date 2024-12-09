@@ -82,7 +82,7 @@ class MFBOAgentBase():
         self.delta_L = kwargs.get('delta_L', 0.8)
         # self.delta_H = kwargs.get('delta_H', 0.4)
         self.beta = kwargs.get('beta', 0.05)
-        # self.dim = self.X_H.shape[1]
+        self.dim = self.X_L.shape[1]
         self.iter_create_model = kwargs.get('iter_create_model', 200)
         self.N_cand = kwargs.get('N_cand', 1000)
 
@@ -497,9 +497,9 @@ class MFBOAgentBase():
         self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))
         self.N_L += 1
         self.exp_result_array.append(Y_next[0])
-        # rel_snap = 1.0*self.sampling_func_H(self.X_next[None,:], return_snap=True)
-        # self.rel_snap_array.append(rel_snap[0])
-        # print("rel_snap: {}".format(rel_snap[0]))
+        rel_snap = 1.0*self.sampling_func_L(self.X_next[None,:])
+        self.rel_snap_array.append(rel_snap[0])
+        print("rel_snap: {}".format(rel_snap[0]))
 #         if rel_snap[0] < 0.999:
 #             prRed("Wrong rel snap: {}".format(rel_snap[0]))
 #             prRed("X_next_denorm: {}".format(X_next_denorm))
@@ -528,7 +528,6 @@ class MFBOAgentBase():
                 low_idx += 1
             yaml_out.write("  found_ei: {}\n".format(self.found_ei_array[it]))
             yaml_out.write("  exp_result: {}\n".format(self.exp_result_array[it]))
-            # print(self.rel_snap_array)
             yaml_out.write("  rel_snap: {}\n".format(self.rel_snap_array[it]))
             yaml_out.write("  min_time: {}\n".format(self.min_time_array[it]))
             yaml_out.write("  alpha_cand: [{}]\n\n".format(','.join([str(x) for x in self.alpha_cand_array[it]])))
@@ -568,7 +567,7 @@ class MFBOAgentBase():
         if main_iter_start == N-1:
             self.save_result_data(filedir, filename_result)
         # Main loop for active learning iterations
-
+        
         for main_iter in range(main_iter_start, N):
             prGreen("#################################################")
             print('%i / %i' % (main_iter+1,N))
@@ -581,10 +580,10 @@ class MFBOAgentBase():
             num_low_fidelity = self.N_low_fidelity
                     # Compute the next point
             # while self.X_next_fidelity == 0: # since only have low fidelity points, will loop infinately if not commented out
-            try:
-                self.create_model(num_epochs=self.iter_create_model)
-                self.compute_next_point_cand()
-            except RuntimeError as e:
+            # try:
+            self.create_model(num_epochs=self.iter_create_model)
+            self.compute_next_point_cand()
+            # except RuntimeError as e:
                 # if 'out of memory' in str(e):
                 #     print('| WARNING: ran out of memory, retrying batch')
                 #     for p in self.model.parameters():
@@ -602,21 +601,27 @@ class MFBOAgentBase():
                 #     self.create_model()
                 #     self.compute_next_point_cand()
                 # else:
-                raise e
+                # raise e
             # Append the next point
             self.append_next_point()
+
+            
+            # plotting 
             if plot:
                 prefix = self.model_prefix.split("/")[1]+"_"+str(self.rand_seed)
                 filepath = os.path.join(filedir,prefix)
                 if not os.path.exists(filepath):
                     os.makedirs(filepath)
                 filepath = os.path.join(filepath,filename_plot%main_iter)
+                print(filepath)
+                print("PLOTTING")
                 self.plot(filename = filepath)
 
             self.min_time_array.append(self.min_time)
             self.alpha_cand_array.append(self.alpha_min_cand)
             self.fidelity_array.append(self.X_next_fidelity)
             if self.flag_found_ei:
+                # add an expected improvement is found, append 1 to ei array
                 self.found_ei_array.append(1)
                 num_found_ei += 1
             else:
@@ -649,7 +654,8 @@ class MFBOAgentBase():
         return
 
     def plot(self, filename='MFBO_2D.png'):
-        assert self.dim == 2
+        # assert self.dim == 2
+        print("shape of xl",self.X_L.shape)
         mean, var, prob_cand = self.forward_test()
         
         ent_cand = -np.abs(mean)/(var + 1e-9)
@@ -761,6 +767,9 @@ class ActiveMFDGP(MFBOAgentBase):
         N_data = self.X_L.shape[0]
         # N_data = self.X_L.shape[0] + self.X_H.shape[0]
 
+        train_loss = []
+        test_loss = []
+
         with gpytorch.settings.fast_computations(log_prob=False, solves=False):
             for i in range(num_epochs):
                 avg_loss = 0
@@ -771,6 +780,17 @@ class ActiveMFDGP(MFBOAgentBase):
                     loss.backward(retain_graph=True)
                     avg_loss += loss.item()/N_data
                     optimizer.step()
+                
+                train_loss.append(avg_loss)
+
+                with torch.no_grad():
+                    self.X_cand = self.sample_data(self.N_cand)
+                    test_x = torch.tensor(self.X_cand).float()#.cuda()
+                    test_dataset = TensorDataset(test_x)
+                    test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
+                    test_output = self.clf(self.X_test, fidelity=1)
+                    test_loss = -mll(test_output, self.test).item()
+                    test_loss.append(test_loss)
 
                 # for minibatch_i, (x_batch, y_batch) in enumerate(self.train_loader_H):
                 #     optimizer.zero_grad()
@@ -793,6 +813,16 @@ class ActiveMFDGP(MFBOAgentBase):
             self.min_loss = avg_loss
         
         print(" - Time: %.3f" % (time.time() - start_time))
+
+         # Plot the loss history
+        plt.figure(figsize=(8, 5))
+        plt.plot(range(1, len(train_loss) + 1), train_loss, label="Training Loss")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.title("Training Loss Over Epochs")
+        plt.legend()
+        plt.grid()
+        plt.savefig(os.path.join(os.getcwd(),"loss_plot.png"))
     
     # line 8 of Algorithm 1 (i think)
     def forward_cand(self):
@@ -844,10 +874,10 @@ class ActiveMFDGP(MFBOAgentBase):
         var = np.empty(0)
         prob_cand = np.empty(0)
         for minibatch_i, (x_batch,) in enumerate(test_loader_L):
-            m, v, pm = self.clf.predict_proba(x_batch, fidelity=2, return_std=False)
+            m, v, pm = self.clf.predict_proba(x_batch, fidelity=1, return_std=False)
             mean = np.append(mean, m)
             var = np.append(var, v)
             prob_cand = np.append(prob_cand, pm[:,1])
         
         return mean, var, prob_cand
-
+    
