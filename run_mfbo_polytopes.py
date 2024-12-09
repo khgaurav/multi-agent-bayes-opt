@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import csv
+import pandas as pd
 import os
 import numpy as np
 import argparse
@@ -79,67 +81,89 @@ if __name__ == "__main__":
     lb_i = np.ones(t_dim)*lb
     ub_i = np.ones(t_dim)*ub
 
-    # look for existing dataset
-    res_init, data_init = check_dataset_init(sample_name_, t_dim, N_L=1000, N_H=20, lb=lb, ub=ub, sampling_mode=2)
-    print(res_init)  # false
-    print(data_init)  # None
+    # # look for existing dataset
+    # res_init, data_init = check_dataset_init(sample_name_, t_dim, N_L=1000, N_H=20, lb=lb, ub=ub, sampling_mode=2)
+    # print(res_init)  # false
+    # print(data_init)  # None
     
-    if res_init:
-        alpha_sim, X_L, Y_L, X_H, Y_H = data_init
-        t_set_sim = t_set_sta * alpha_sim
-        low_fidelity = lambda x, debug=True, multicore=False: \
-            meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
-        high_fidelity = lambda x, return_snap=False, multicore=False: \
-            meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
-                return_snap=return_snap, multicore=multicore, \
-                max_col_err=max_col_err, N_trial=N_trial)
-    else:
-        print("Initializing dataset")
-        sanity_check_t = lambda t_set, d_ordered, d_ordered_yaw: \
-            poly.run_sim_loop(t_set, d_ordered, d_ordered_yaw, plane_pos_set, max_col_err=max_col_err, N_trial=N_trial)
-        print("Start generating initial trajectory")
-        t_set_sta, d_ordered, d_ordered_yaw = poly.update_traj(t_set_sta, 
-                                                               points, 
-                                                               plane_pos_set, 
-                                                               np.ones_like(t_set_sta),
-                                                               flag_fixed_point=False, 
-                                                               flag_fixed_end_point=True)
-        print("Done generating initial trajectory")
-        print("Start generating time optimized trajectory")
-        t_set_sim, d_ordered, d_ordered_yaw, alpha_sim = poly.optimize_alpha(points,  
-                                                                             t_set_sta,  # initial time array
-                                                                             d_ordered,  # initial position array
-                                                                             d_ordered_yaw,  # initial yaw angle array
-                                                                             alpha_scale=1.0,  # alpha scaling
-                                                                             sanity_check_t=sanity_check_t,  # sim env to check valid trajectory
-                                                                             flag_return_alpha=True,  # returns alpha value if true
-                                                                             )
-        # save data to files
-        with open(f"time_opt_traj_{sample_name_}.npy", "wb") as f:
-            np.save(f, t_set_sim)
-            np.save(f, d_ordered)
-            np.save(f, d_ordered_yaw)
-            np.save(f, np.array(alpha_sim))
+    # res_init = True
 
-        print("alpha_sim: {}".format(alpha_sim))
+    # if res_init:
+    #     alpha_sim, X_L, Y_L, X_H, Y_H = data_init
+    #     print(X_L.shape)
+    #     print(X_H.shape)
+    #     print(Y_L.shape)
+    #     print(Y_H.shape)
+    alpha_sim = 1.789
+    t_set_sim = t_set_sta * alpha_sim
+    low_fidelity = lambda x, debug=True, multicore=False: \
+        meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
+    high_fidelity = lambda x, return_snap=False, multicore=False: \
+        meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
+            return_snap=return_snap, multicore=multicore, \
+            max_col_err=max_col_err, N_trial=N_trial)
+    # else:
+        # print("Initializing dataset")
+        # sanity_check_t = lambda t_set, d_ordered, d_ordered_yaw: \
+        #     poly.run_sim_loop(t_set, d_ordered, d_ordered_yaw, plane_pos_set, max_col_err=max_col_err, N_trial=N_trial)
+        # print("Start generating initial trajectory")
+        # t_set_sta, d_ordered, d_ordered_yaw = poly.update_traj(t_set_sta, 
+        #                                                        points, 
+        #                                                        plane_pos_set, 
+        #                                                        np.ones_like(t_set_sta),
+        #                                                        flag_fixed_point=False, 
+        #                                                        flag_fixed_end_point=True)
+        # print("Done generating initial trajectory")
+        # print("Start generating time optimized trajectory")
+        # t_set_sim, d_ordered, d_ordered_yaw, alpha_sim = poly.optimize_alpha(points,  
+        #                                                                      t_set_sta,  # initial time array
+        #                                                                      d_ordered,  # initial position array
+        #                                                                      d_ordered_yaw,  # initial yaw angle array
+        #                                                                      alpha_scale=1.0,  # alpha scaling
+        #                                                                      sanity_check_t=sanity_check_t,  # sim env to check valid trajectory
+        #                                                                      flag_return_alpha=True,  # returns alpha value if true
+        #                                                                      )
+        # # save data to files
+        # with open(f"time_opt_traj_{sample_name_}.npy", "wb") as f:
+        #     np.save(f, t_set_sim)
+        #     np.save(f, d_ordered)
+        #     np.save(f, d_ordered_yaw)
+        #     np.save(f, np.array(alpha_sim))
+
+        # print("alpha_sim: {}".format(alpha_sim))
     
-        low_fidelity = lambda x, debug=True, multicore=False: \
-            meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
-        high_fidelity = lambda x, return_snap=False, multicore=False: \
-            meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
-                return_snap=return_snap, multicore=multicore, \
-                max_col_err=max_col_err, N_trial=N_trial)
-        X_L, Y_L, X_H, Y_H = get_dataset_init(sample_name_, 
-                                              alpha_sim, 
-                                              low_fidelity, 
-                                              high_fidelity,  # not used
-                                              t_dim, 
-                                              N_L=1000, 
-                                              N_H=20, 
-                                              lb=lb, 
-                                              ub=ub,
-                                              sampling_mode=2, 
-                                              flag_multicore=True)
+        # low_fidelity = lambda x, debug=True, multicore=False: \
+        #     meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
+        # high_fidelity = lambda x, return_snap=False, multicore=False: \
+        #     meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
+        #         return_snap=return_snap, multicore=multicore, \
+        #         max_col_err=max_col_err, N_trial=N_trial)
+        # X_L, Y_L, X_H, Y_H = get_dataset_init(sample_name_, 
+        #                                       alpha_sim, 
+        #                                       low_fidelity, 
+        #                                       high_fidelity,  # not used
+        #                                       t_dim, 
+        #                                       N_L=1000, 
+        #                                       N_H=20, 
+        #                                       lb=lb, 
+        #                                       ub=ub,
+        #                                       sampling_mode=2, 
+        #                                       flag_multicore=True)
+        # pass
+
+    # with open('/home/aaron/mfboTrajectory/mfbo_data/X_L.csv', mode='r') as file:
+    with open(os.path.join(os.getcwd(),'mfbo_data/dataset.npy'), "rb") as f:
+        X_L = np.load(f)
+        Y_L = np.load(f)
+        X_H = np.load(f)
+        Y_H = np.load(f)
+
+    
+        # print(X_L.shape, Y_L.shape, X_H.shape, Y_H.shape)
+
+    Y_L = Y_L.reshape(-1)
+    Y_H = Y_H.reshape(-1)
+
     print("Seed {}".format(rand_seed_))
     
     np.random.seed(rand_seed_)
@@ -186,7 +210,7 @@ if __name__ == "__main__":
 
         mfbo_model.active_learning(
             N=max_iter, 
-            plot=False, 
+            plot=True, 
             MAX_low_fidelity=0,
             filedir=filedir,
             filename_result=results_filename,
