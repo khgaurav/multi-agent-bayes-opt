@@ -263,29 +263,29 @@ class MFBOAgentBase():
     # sample more points for X_cand
     # TO DO need to split points into correct datasets ?
     # TO DO change how we generate X_cand
-    def append_next_point(self):
-        X_next_denorm = self.lb_i + np.multiply(self.X_next[:self.t_dim],self.ub_i-self.lb_i)
-        X_next_time = X_next_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
-        print("X_next: {}".format(X_next_denorm))
-        print("X_next time: {}".format(X_next_time))
-        self.N_low_fidelity += 1
-        print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
+    def append_next_point(self, X_next, Y_next):
+        # X_next_denorm = self.lb_i + np.multiply(self.X_next[:self.t_dim],self.ub_i-self.lb_i)
+        # X_next_time = X_next_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+        # print("X_next: {}".format(X_next_denorm))
+        # print("X_next time: {}".format(X_next_time))
+        # self.N_low_fidelity += 1
+        # print("low fidelity: {}/{}".format(self.N_low_fidelity,self.MAX_low_fidelity))
 
-        self.X_L = np.vstack((self.X_L, self.X_next))  # update x_l with new points
-        Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])  # runs meta_low_fidelity on x_next
+        self.X_L = np.vstack((self.X_L, X_next))  # update x_l with new points
+        # Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])  # runs meta_low_fidelity on x_next
         self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))  # update y_l with new evaluations
         self.N_L += 1
         self.exp_result_array.append(Y_next[0])
-        rel_snap = 1.0*self.sampling_func_L(self.X_next[None,:])
+        rel_snap = 1.0*self.sampling_func_L(X_next[None,:])
         self.rel_snap_array.append(rel_snap[0])
         print("rel_snap: {}".format(rel_snap[0]))
 
         print("N_L: {}".format(self.N_L))
         
-        if self.X_cand.shape[0] < self.N_cand:
-            print("Remaining X_cand: {}".format(self.X_cand.shape[0]))
-            self.X_cand = np.append(self.X_cand, self.sample_data(self.N_cand-self.X_cand.shape[0]),0)
-        print("-------------------------------------------")
+        # if self.X_cand.shape[0] < self.N_cand:
+        #     print("Remaining X_cand: {}".format(self.X_cand.shape[0]))
+        #     self.X_cand = np.append(self.X_cand, self.sample_data(self.N_cand-self.X_cand.shape[0]),0)
+        # print("-------------------------------------------")
     
     def save_result_data(self, filedir, filename_result):
         yamlFile = os.path.join(filedir, filename_result)
@@ -516,9 +516,9 @@ class ActiveMFDGP(MFBOAgentBase):
                     test_x = torch.tensor(self.X_cand).float()#.cuda()
                     test_dataset = TensorDataset(test_x)
                     test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
-                    test_output = self.clf(self.X_test, fidelity=1)
-                    test_loss = -mll(test_output, self.test).item()
-                    test_loss.append(test_loss)
+                    # test_output = self.clf(self.X_test, fidelity=1)
+                    # test_loss = -mll(test_output, self.test).item()
+                    # test_loss.append(test_loss)
 
                 # for minibatch_i, (x_batch, y_batch) in enumerate(self.train_loader_H):
                 #     optimizer.zero_grad()
@@ -583,12 +583,27 @@ class ActiveMFDGP(MFBOAgentBase):
         return mean_L, var_L, prob_cand_L, prob_cand_L_mean
 
 class TwoDrone():
-    def __init__(self):
+    def __init__(self, poly):
         self.drone_1 = ActiveMFDGP()
         self.drone_2 = ActiveMFDGP()
         self.drone_12 = ActiveMFDGP()
 
         self.min_time = 1  # ??
+
+        self.drone_1_cols = range(4)
+        self.drone_2_cols = range(4, 8)
+
+        # variables defined in IV.a
+        self.h = 0.001
+
+        self.X = None  # sample set X to search over with acquisition function
+        self.X_next = None  # selected sample (output from acquisition)
+
+        # stuff
+        self.poly = poly
+        self.eval_func_1  # meta_low_fidelity
+        self.eval_func_2
+        self.eval_func_12  # meta_low_fidelity_multi
 
     def compute_next_point_cand(self):
         mean_1, var_1, prob_cand_1, _ = self.drone_1.forward_cand()
@@ -599,17 +614,17 @@ class TwoDrone():
         alpha_explore = -(np.abs(mean_1)/(var_1 + 1e-9) + np.abs(mean_2)/(var_2 + 1e-9)) - np.abs(mean_12)/(var_12 + 1e-9)
         
         # find alpha_exploit following mfbo eq. 19
-        self.flag_found_ei = False
+        # self.flag_found_ei = False
         max_alpha_exploit_idx = -1  # -1 if alpha_exploit not updated
         alpha_exploit = 0  # alpha_exploit initially set to 0
         min_time_tmp = self.min_time  # xbar
         # check if there exists x in X where alpha_exploit(x) > 0
-        for it in range(self.X_cand.shape[0]):
+        for it in range(self.X.shape[0]):
             # DRONE 1
-            x_cand_denorm = self.drone_1.lb_i + np.multiply(self.drone_1.X_cand[it,:self.drone_1.t_dim],self.drone_1.ub_i-self.drone_1.lb_i)
+            x_cand_denorm = self.drone_1.lb_i + np.multiply(self.X[it,self.drone_1_cols],self.drone_1.ub_i-self.drone_1.lb_i)
             min_time_drone_1 = x_cand_denorm.dot(self.drone_1.t_set_sim)/np.sum(self.drone_1.t_set_sim)
             # DRONE 2
-            x_cand_denorm = self.drone_2.lb_i + np.multiply(self.drone_2.X_cand[it,:self.drone_2.t_dim],self.drone_2.ub_i-self.drone_2.lb_i)
+            x_cand_denorm = self.drone_2.lb_i + np.multiply(self.X[it,:self.drone_2_cols],self.drone_2.ub_i-self.drone_2.lb_i)
             min_time_drone_2 = x_cand_denorm.dot(self.drone_2.t_set_sim)/np.sum(self.drone_2.t_set_sim)
             # ALPHA_EI
             alpha_ei = max(self.drone_1.min_time, self.drone_2.min_time) - max(min_time_drone_1, min_time_drone_2)
@@ -619,23 +634,52 @@ class TwoDrone():
             
             # GET ALPHA_EXPLOIT FROM CONDITION ON PROB_CAND
             alpha_exploit_tmp = alpha_ei * prob_cand
-            if alpha_exploit_tmp > alpha_exploit and prob_cand > self.hl:
+            if alpha_exploit_tmp > alpha_exploit and prob_cand > self.h:
                 alpha_exploit = alpha_exploit_tmp
                 max_alpha_exploit_idx = it
 
-        self.X_next_fidelity = 0  # TO DO remove all instances
         # alpha_exploit
         if max_alpha_exploit_idx != -1:
-            self.flag_found_ei = True
-            self.X_next = self.X_cand[max_alpha_exploit_idx,:]
-            self.min_time_cand = min_time_tmp
+            X_next = self.X[max_alpha_exploit_idx,:]  # select x from X
             print(f"alpha_exploit: {alpha_exploit}")
         # alpha_explore
         else:
-            self.X_next = self.X_cand[alpha_explore.argmax()] ### LINE 6 IN ALGORITHM 1 ###
-            x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i) # TODO figure out what to change here for candidate stuff
-            self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+            X_next = self.X[alpha_explore.argmax(),:]
             print(f"alpha_explore: {alpha_explore}")
-        self.alpha_min_cand = self.lb_i + np.multiply(self.X_next[:,:self.t_dim],self.ub_i-self.lb_i)
+        # set min time based on upper and lower bounds
+        x_denorm_1 = self.drone_1.lb_i + np.multiply(self.X_next[:self.drone_1_cols], self.drone_1.ub_i - self.drone_1.lb_i)
+        self.drone_1.min_time = x_denorm_1.dot(self.drone_1.t_set_sim)
+        x_denorm_2 = self.drone_2.lb_i + np.multiply(self.X_next[:self.drone_2_cols], self.drone_2.ub_i - self.drone_2.lb_i)
+        self.drone_2.min_time = x_denorm_2.dot(self.drone_2.t_set_sim)
+        
+        # self.alpha_min_cand = self.lb_i + np.multiply(self.X_next, self.ub_i-self.lb_i)
+        return X_next
 
+    def evaluate_x_next(self, X_next):
+        Y_next = np.array([0.0])
+        Y_next_1 = 1.0 * self.eval_func_1(X_next[:, self.drone_1_cols]) # size np.array((1,))
+        if Y_next_1 == np.array([1.0]):
+            Y_next_2 = 1.0 * self.eval_func_2(X_next[:, self.drone_2_cols])
+            if Y_next_2 == np.array([1.0]):
+                Y_next_12 = self.eval_func_12(X_next)
+                if Y_next_12 == np.array([1.0]):
+                    Y_next = np.array([1.0])
+        return Y_next
     
+    def update_datasets(self, X_next, Y_next):
+        self.drone_1.append_next_point(X_next[:, self.drone_1_cols], Y_next)
+        self.drone_1.append_next_point(X_next[:, self.drone_2_cols], Y_next)
+        self.drone_12.append_next_point(X_next, Y_next)
+    
+    def update_models(self, iters=200):
+        self.drone_1.create_model(num_epochs=iters)
+        self.drone_2.create_model(num_epochs=iters)
+        self.drone_12.create_model(num_epochs=iters)
+
+    def bayes_opt(self, iters=10):
+        for _ in range(iters):
+            X_next = self.compute_next_point_cand()
+            Y_next = self.evaluate_x_next(X_next)
+            self.update_datasets(X_next, Y_next)
+            self.update_models()
+        return X_next, Y_next
