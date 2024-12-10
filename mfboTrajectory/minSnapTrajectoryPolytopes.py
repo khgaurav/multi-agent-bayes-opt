@@ -762,7 +762,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                 flag_fixed_end_point=True, \
                 flag_fixed_point=flag_fixed_point)
         
-        return self.sanity_check(t_set_new, d_ordered, d_ordered_yaw)
+        return self.sanity_check(t_set_new, d_ordered, d_ordered_yaw) & (np.sum(d_ordered[1:4, :]) != 0.0)
     
     def wrapper_sanity_check_multi(self, args):
         points1 = args[0]
@@ -1253,6 +1253,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         fig.update_layout(scene_aspectmode='data')
         fig.show()
     def plot_trajectory_multi(self, t_set1, d_ordered1, plane_pos_set1, t_set2, d_ordered2, plane_pos_set2, flag_course_loop=True):
+        
         N_POLY1 = t_set1.shape[0]
         N_wp1 = np.int(d_ordered1.shape[0]/self.N_DER)
         flag_loop1 = True
@@ -1369,7 +1370,38 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                 )
             )
         )
+
+        mesh_data.append(
+            go.Scatter3d(
+                x=status1[:,0][::50], 
+                y=status1[:,1][::50], 
+                z=status1[:,2][::50],
+                mode='markers',
+                name="Drone 1 Trajectory",
+                line=dict(
+                    color='darkblue',
+                    width=2
+                )
+            )
+        )
         
+        mesh_data.append(
+            go.Scatter3d(
+                x=status2[:,0][::50], 
+                y=status2[:,1][::50], 
+                z=status2[:,2][::50],
+                mode='markers',
+                name="Drone 2 Trajectory",
+                line=dict(
+                    color='darkred',
+                    width=2
+                )
+            )
+        )
+
+        print(np.sum((status1[:,0:3] - status2[:,0:3])**2, axis=1))
+        # print(np.linalg.norm(pos1 - pos2, axis=1))
+        # print(np.linalg.norm(pos1 - pos2, axis=1) < 0.1)
         waypoints1 = status1[0:1,:]
         for i in range(1,N_POLY1):
             waypoints1 = np.append(waypoints1,status1[i*self.N_POINTS:i*self.N_POINTS+1,:],axis=0)
