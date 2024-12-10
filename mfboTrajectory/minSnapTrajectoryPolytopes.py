@@ -374,6 +374,15 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                 if waypoints[p_ii_n] == True:
                     A = scipy.linalg.block_diag(V_t_fixed,V_t_fixed,V_t_fixed)
                     constraints.append(A*x == points[p_ii_n,:3])
+                else:
+                    v0 = np.array(plane_pos_set[p_ii]["output_plane"][0])
+                    v1 = np.array(plane_pos_set[p_ii]["output_plane"][1])
+                    v2 = np.array(plane_pos_set[p_ii]["output_plane"][2])
+                    V_norm = np.cross(v1-v0, v2-v0)*1.0
+                    V_norm /= np.linalg.norm(V_norm)
+                    V_bias = V_norm.dot(v0)                    
+                    A = np.hstack([V_norm[0]*V_t_fixed,V_norm[1]*V_t_fixed,V_norm[2]*V_t_fixed])
+                    constraints.append(A*x == V_bias)
 
             # Starting point constraints
             if flag_init_point:
