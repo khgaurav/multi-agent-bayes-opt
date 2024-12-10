@@ -625,6 +625,7 @@ class TwoDrone():
                                     sampling_mode=0)
 
         self.min_time = 1  # ??
+        self.t_set_sta = kwargs.get("t_set_sta")
         
         self.drone_1_cols = range(4)
         self.drone_2_cols = range(4, 8)
@@ -722,7 +723,7 @@ class TwoDrone():
         self.drone_12.create_model(num_epochs=iters)
 
     def bayes_opt(self, min_iters=10, max_iters=100):
-        self.update_models(iters=500)
+        self.update_models(iters=100)
         print(self.drone_1.predict_single_point(self.drone_1.X_L[(self.drone_1.Y_L == 1).T])[2])
         print(self.drone_1.predict_single_point(self.drone_1.X_L[(self.drone_1.Y_L == 0).T])[2])
         # print(self.drone_1.forward_cand()[2])
@@ -747,11 +748,19 @@ class TwoDrone():
             X_t = drone.sample_data(self.N_s)
             # Rescale X_t with X_F
             X_t_copy = X_t.copy()
-            X_t_copy[:, 0] = (X_t[:, 0]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
-            X_t_copy[:, 1] = (X_t[:, 1]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
-            X_t_copy[:, 2] = (X_t[:, 2]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
-            X_t_copy[:, 3] = (X_t[:, 3]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
+            # X_t_copy[:, 0] = (X_t[:, 0]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
+            # X_t_copy[:, 1] = (X_t[:, 1]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
+            # X_t_copy[:, 2] = (X_t[:, 2]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
+            # X_t_copy[:, 3] = (X_t[:, 3]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
+            time12 = X_F[0, 0] * self.t_set_sta[0] + X_F[0, 1] * self.t_set_sta[1]
+            time34 = X_F[0, 2] * self.t_set_sta[2] + X_F[0, 3] * self.t_set_sta[3]
+            X_t12 = np.sum(X_t[:, 0:2], axis=1)
+            X_t34 = np.sum(X_t[:, 3:4], axis=1)
+            X_t_copy[:, 0] = (time12 - (self.t_set_sta[1] * X_t12) / (self.t_set_sta[0] - self.t_set_sta[1]))
+            X_t_copy[:, 1] = (time12 - (self.t_set_sta[0] * X_t12) / (self.t_set_sta[1] - self.t_set_sta[0]))
 
+            X_t_copy[:, 2] = (time34 - (self.t_set_sta[3] * X_t34) / (self.t_set_sta[2] - self.t_set_sta[3]))
+            X_t_copy[:, 3] = (time34 - (self.t_set_sta[2] * X_t34) / (self.t_set_sta[3] - self.t_set_sta[2]))
             # X_t = drone.lb_i + np.multiply(X_t, drone.ub_i-drone.lb_i)
             # print(drone.predict_single_point(X_t)[2])
             valid_rows = drone.predict_single_point(X_t_copy)[2] > C1_tmp
