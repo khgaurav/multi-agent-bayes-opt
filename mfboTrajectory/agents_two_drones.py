@@ -645,8 +645,8 @@ class TwoDrone():
         self.N_s = 2 # Size of candidate data points
         self.N_1 = 5 # Number of low fidelity samples to generate for a single drone to evaluate feasibility
         self.N_2 = 128 # Number of samples needed for acquisition function
-        self.C_1 = 0.8 # Threshold for dynamic feasibility
-        self.C_2 = 0.8 # Threshold for collision feasibility
+        self.C_1 = 0.7 # Threshold for dynamic feasibility
+        self.C_2 = 0.7 # Threshold for collision feasibility
 
     def compute_next_point_cand(self):
         mean_1, var_1, prob_cand_1, _ = self.drone_1.forward_cand()

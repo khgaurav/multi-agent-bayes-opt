@@ -1380,37 +1380,6 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             )
         )
 
-        mesh_data.append(
-            go.Scatter3d(
-                x=status1[:,0][::50], 
-                y=status1[:,1][::50], 
-                z=status1[:,2][::50],
-                mode='markers',
-                name="Drone 1 Trajectory",
-                line=dict(
-                    color='darkblue',
-                    width=2
-                )
-            )
-        )
-        
-        mesh_data.append(
-            go.Scatter3d(
-                x=status2[:,0][::50], 
-                y=status2[:,1][::50], 
-                z=status2[:,2][::50],
-                mode='markers',
-                name="Drone 2 Trajectory",
-                line=dict(
-                    color='darkred',
-                    width=2
-                )
-            )
-        )
-
-        print(np.sum((status1[:,0:3] - status2[:,0:3])**2, axis=1))
-        # print(np.linalg.norm(pos1 - pos2, axis=1))
-        # print(np.linalg.norm(pos1 - pos2, axis=1) < 0.1)
         waypoints1 = status1[0:1,:]
         for i in range(1,N_POLY1):
             waypoints1 = np.append(waypoints1,status1[i*self.N_POINTS:i*self.N_POINTS+1,:],axis=0)
@@ -1452,6 +1421,8 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         fig = go.Figure(data=mesh_data)
         fig.update_layout(scene_aspectmode='data')
         fig.show()
+
+        return status1, status2
         
     def der_to_point(self, d_ordered, flag_print=False):
         N_points = np.int(d_ordered.shape[0]/self.N_DER)
