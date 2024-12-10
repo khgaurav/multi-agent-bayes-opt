@@ -645,8 +645,8 @@ class TwoDrone():
         self.N_s = 2 # Size of candidate data points
         self.N_1 = 5 # Number of low fidelity samples to generate for a single drone to evaluate feasibility
         self.N_2 = 128 # Number of samples needed for acquisition function
-        self.C_1 = 0.6 # Threshold for dynamic feasibility
-        self.C_2 = 0.35 # Threshold for collision feasibility
+        self.C_1 = 0.8 # Threshold for dynamic feasibility
+        self.C_2 = 0.8 # Threshold for collision feasibility
 
     def compute_next_point_cand(self):
         mean_1, var_1, prob_cand_1, _ = self.drone_1.forward_cand()
@@ -727,6 +727,7 @@ class TwoDrone():
         print(self.drone_1.predict_single_point(self.drone_1.X_L[(self.drone_1.Y_L == 0).T])[2])
         # print(self.drone_1.forward_cand()[2])
         for it in range(max_iters):
+            print(f"iteration number {it}")
             self.X = self.get_dataset()
             print(np.round(self.X, 3))
             X_next = self.compute_next_point_cand()
@@ -741,6 +742,7 @@ class TwoDrone():
     def sample_traj(self, drone, X_F):
         # x = np.empty((self.N_1, drone.dim))
         X = np.empty((0, drone.dim))
+        C1_tmp = self.C_1
         while X.shape[0] < self.N_1:
             X_t = drone.sample_data(self.N_s)
             # Rescale X_t with X_F
@@ -752,11 +754,12 @@ class TwoDrone():
 
             # X_t = drone.lb_i + np.multiply(X_t, drone.ub_i-drone.lb_i)
             # print(drone.predict_single_point(X_t)[2])
-            valid_rows = drone.predict_single_point(X_t_copy)[2] > self.C_1
+            valid_rows = drone.predict_single_point(X_t_copy)[2] > C1_tmp
             X = np.vstack([X, X_t_copy[valid_rows.T, :]])
-            # for x in X_t:
-            #     if drone.predict_single_point(x)[2] > self.C_1:
-            #         X = np.vstack([X, x])
+            if sum(valid_rows) == 0:
+                C1_tmp -= 0.01
+        if C1_tmp == self.C_1 and self.C_1 < 0.8:
+            self.C_1 += 0.01
         return X[:self.N_1, :]
 
     def get_dataset(self):
@@ -765,15 +768,21 @@ class TwoDrone():
         X_F = np.vstack([X_F]*self.N_s)
         X = np.empty((0,self.drone_1.dim + self.drone_2.dim))
         print(X_F)
+        C2_tmp = self.C_2
         while X.shape[0] < self.N_2:
             # print("drone_12")
             X_t_1 = self.sample_traj(self.drone_1, X_F)
             X_t_2 = self.sample_traj(self.drone_2, X_F)
             x = np.hstack([X_t_1, X_t_2])
-            valid_rows = self.drone_12.predict_single_point(x)[2] > self.C_2
+            valid_rows = self.drone_12.predict_single_point(x)[2] > C2_tmp
             # print(self.drone_12.predict_single_point(x)[2])
             X = np.vstack([X, x[valid_rows.T, :]])
-            print(len(X))
+            # print(len(X))
+            if sum(valid_rows) == 0:
+                C2_tmp -= 0.01
+            # print(C2_tmp)
+        if C2_tmp == self.C_2 and self.C_2 < 0.8:
+            self.C_2 += 0.01
             # for x1 in X_t_1:
             #     for x2 in X_t_2:
             #         x = np.hstack([x1, x2])

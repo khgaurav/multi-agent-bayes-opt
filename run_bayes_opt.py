@@ -94,13 +94,13 @@ if __name__ == "__main__":
         meta_low_fidelity_multi(poly, x1, t_set_sta1, points1, plane_pos_set1, waypoints1, x2, t_set_sta2, points2, plane_pos_set2, waypoints2, debug, lb=lb, ub=ub, multicore=multicore)
     
     # LOAD RESULTS FROM GET_DATASET_INIT (FOR DRONE 1, DRONE 2, AND DRONE 1+2)
-    with open("traj_13_optimize_alpha_scaled_init_dataset.npy", "rb") as f:
+    with open("traj_13_optimize_alpha_scaled_init_dataset_full.npy", "rb") as f:
         X1 = np.load(f)
         Y1 = np.load(f)
-    with open("traj_14_optimize_alpha_scaled_init_dataset.npy", "rb") as f:
+    with open("traj_13_optimize_alpha_scaled_init_dataset_full.npy", "rb") as f:
         X2 = np.load(f)
         Y2 = np.load(f)
-    with open("two_drone_init_dataset.npy", "rb") as f:
+    with open("two_drone_alpha_scaled_init_dataset_full.npy", "rb") as f:
         X12 = np.load(f)
         Y12 = np.load(f)
     # X12 = X12.reshape(-1, 2*X12.shape[1])
@@ -138,7 +138,10 @@ if __name__ == "__main__":
         eval_func_2 = low_fidelity_2,
         eval_func_12 = low_fidelity_multi
     )
-    X, Y = two_drones.bayes_opt()
+    X, Y = two_drones.bayes_opt(min_iters=200, max_iters=250)
+
+    print("FINAL X")
+    print(X)
     
     alpha_set_1 = lb + X.flatten()[range(4)] * (ub - lb)
     print(alpha_set_1)
@@ -147,18 +150,16 @@ if __name__ == "__main__":
                                                                 points1, 
                                                                 plane_pos_set1, 
                                                                 waypoints1,
-                                                                np.ones_like(t_set_sta1),
+                                                                alpha_set=alpha_set_1,
                                                                 flag_fixed_point=False, 
-                                                                flag_fixed_end_point=False,
-                                                                alpha_set=alpha_set_1)
+                                                                flag_fixed_end_point=False)
     t_set_2, d_ordered_2, d_ordered_yaw_2 = poly.update_traj(t_set_sta2, 
                                                                 points2, 
                                                                 plane_pos_set2, 
                                                                 waypoints2,
-                                                                np.ones_like(t_set_sta2),
+                                                                alpha_set=alpha_set_2,
                                                                 flag_fixed_point=False, 
-                                                                flag_fixed_end_point=False,
-                                                                alpha_set=alpha_set_2)
+                                                                flag_fixed_end_point=False)
     with open("final_traj_13.npy", "wb") as f:
         np.save(f, t_set_1)
         np.save(f, d_ordered_1)
