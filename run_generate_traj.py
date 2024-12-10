@@ -65,81 +65,82 @@ if __name__ == "__main__":
     lb = 0.1
     ub = 1.9
 
-    if t_set_sta1.shape[0] != t_set_sta2.shape[0]:
-        print("Time allocation mismatch")
-        exit()
+    # if t_set_sta1.shape[0] != t_set_sta2.shape[0]:
+    #     print("Time allocation mismatch")
+    #     exit()
     
-    t_dim = t_set_sta1.shape[0]
-    lb_i = np.ones(t_dim)*lb
-    ub_i = np.ones(t_dim)*ub
+    # t_dim = t_set_sta1.shape[0]
+    # lb_i = np.ones(t_dim)*lb
+    # ub_i = np.ones(t_dim)*ub
 
-    # LOAD RESULTS FROM MIN-SNAP FUNCTIONS (UPDATE_TRAJ + OPTIMIZE_ALPHA)
-    with open(f"optimize_alpha_scaled_{sample_name_[0]}.npy", "rb") as f:
-        t_set_sim1 = np.load(f)
-        d_ordered1 = np.load(f)
-        d_ordered_yaw1 = np.load(f)
-        alpha_sim1 = np.load(f)
-    with open(f"optimize_alpha_scaled_{sample_name_[1]}.npy", "rb") as f:
-        t_set_sim2 = np.load(f)
-        d_ordered2 = np.load(f)
-        d_ordered_yaw2 = np.load(f)
-        alpha_sim2 = np.load(f)
+    # # LOAD RESULTS FROM MIN-SNAP FUNCTIONS (UPDATE_TRAJ + OPTIMIZE_ALPHA)
+    # with open(f"optimize_alpha_scaled_{sample_name_[0]}.npy", "rb") as f:
+    #     t_set_sim1 = np.load(f)
+    #     d_ordered1 = np.load(f)
+    #     d_ordered_yaw1 = np.load(f)
+    #     alpha_sim1 = np.load(f)
+    # with open(f"optimize_alpha_scaled_{sample_name_[1]}.npy", "rb") as f:
+    #     t_set_sim2 = np.load(f)
+    #     d_ordered2 = np.load(f)
+    #     d_ordered_yaw2 = np.load(f)
+    #     alpha_sim2 = np.load(f)
 
 
-    low_fidelity_1 = lambda x, debug=True, multicore=False: \
-        meta_low_fidelity(poly, x, t_set_sta1, points1, plane_pos_set1, waypoints1, debug, lb=lb, ub=ub, multicore=multicore)
-    low_fidelity_2 = lambda x, debug=True, multicore=False: \
-        meta_low_fidelity(poly, x, t_set_sta2, points2, plane_pos_set2, waypoints2, debug, lb=lb, ub=ub, multicore=multicore)
-    low_fidelity_multi = lambda x1, x2, debug=True, multicore=True: \
-        meta_low_fidelity_multi(poly, x1, t_set_sta1, points1, plane_pos_set1, waypoints1, x2, t_set_sta2, points2, plane_pos_set2, waypoints2, debug, lb=lb, ub=ub, multicore=multicore)
+    # low_fidelity_1 = lambda x, debug=True, multicore=False: \
+    #     meta_low_fidelity(poly, x, t_set_sta1, points1, plane_pos_set1, waypoints1, debug, lb=lb, ub=ub, multicore=multicore)
+    # low_fidelity_2 = lambda x, debug=True, multicore=False: \
+    #     meta_low_fidelity(poly, x, t_set_sta2, points2, plane_pos_set2, waypoints2, debug, lb=lb, ub=ub, multicore=multicore)
+    # low_fidelity_multi = lambda x1, x2, debug=True, multicore=True: \
+    #     meta_low_fidelity_multi(poly, x1, t_set_sta1, points1, plane_pos_set1, waypoints1, x2, t_set_sta2, points2, plane_pos_set2, waypoints2, debug, lb=lb, ub=ub, multicore=multicore)
     
-    # LOAD RESULTS FROM GET_DATASET_INIT (FOR DRONE 1, DRONE 2, AND DRONE 1+2)
-    with open("traj_13_optimize_alpha_scaled_init_dataset.npy", "rb") as f:
-        X1 = np.load(f)
-        Y1 = np.load(f)
-    with open("traj_14_optimize_alpha_scaled_init_dataset.npy", "rb") as f:
-        X2 = np.load(f)
-        Y2 = np.load(f)
-    with open("two_drone_init_dataset.npy", "rb") as f:
-        X12 = np.load(f)
-        Y12 = np.load(f)
-    # X12 = X12.reshape(-1, 2*X12.shape[1])
+    # # LOAD RESULTS FROM GET_DATASET_INIT (FOR DRONE 1, DRONE 2, AND DRONE 1+2)
+    # with open("traj_13_init_dataset.npy", "rb") as f:
+    #     X1 = np.load(f)
+    #     Y1 = np.load(f)
+    # with open("traj_14_init_dataset.npy", "rb") as f:
+    #     X2 = np.load(f)
+    #     Y2 = np.load(f)
+    # with open("two_drone_init_dataset.npy", "rb") as f:
+    #     X12 = np.load(f)
+    #     Y12 = np.load(f)
+    # # X12 = X12.reshape(-1, 2*X12.shape[1])
 
-    np.random.seed(rand_seed_)
-    torch.manual_seed(rand_seed_)
+    # np.random.seed(rand_seed_)
+    # torch.manual_seed(rand_seed_)
 
-    # filenames
-    fileprefix = "test_polytopes"
-    filedir = f"./mfbo_data/{sample_name_}"
-    logprefix = '{sample_name_}/{fileprefix}/{rand_seed_}'
-    results_filename = f'result_{fileprefix}_{rand_seed_}.yaml'
-    exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
+    # # filenames
+    # fileprefix = "test_polytopes"
+    # filedir = f"./mfbo_data/{sample_name_}"
+    # logprefix = '{sample_name_}/{fileprefix}/{rand_seed_}'
+    # results_filename = f'result_{fileprefix}_{rand_seed_}.yaml'
+    # exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
 
 
-    # flag_check = check_result_data(filedir, results_filename, max_iter)
-        # create agent
-    two_drones = TwoDrone(
-        X1 = X1,
-        Y1 = Y1,
-        X2 = X2,
-        Y2 = Y2,
-        X12 = X12,
-        Y12 = Y12,
-        lb_i = lb_i,
-        ub_i = ub_i,
-        beta = 3.0,
-        rand_seed = rand_seed_,
-        N_cand = 128,
-        batch_size = 1024,
-        model_prefix = logprefix,
-        t_set_sim_1 = t_set_sim1,
-        t_set_sim_2 = t_set_sim2,
-        eval_func_1 = low_fidelity_1,
-        eval_func_2 = low_fidelity_2,
-        eval_func_12 = low_fidelity_multi
-    )
-    X, Y = two_drones.bayes_opt()
-    
+    # # flag_check = check_result_data(filedir, results_filename, max_iter)
+    #     # create agent
+    # two_drones = TwoDrone(
+    #     X1 = X1,
+    #     Y1 = Y1,
+    #     X2 = X2,
+    #     Y2 = Y2,
+    #     X12 = X12,
+    #     Y12 = Y12,
+    #     lb_i = lb_i,
+    #     ub_i = ub_i,
+    #     beta = 3.0,
+    #     rand_seed = rand_seed_,
+    #     N_cand = 128,
+    #     batch_size = 1024,
+    #     model_prefix = logprefix,
+    #     t_set_sim_1 = t_set_sim1,
+    #     t_set_sim_2 = t_set_sim2,
+    #     eval_func_1 = low_fidelity_1,
+    #     eval_func_2 = low_fidelity_2,
+    #     eval_func_12 = low_fidelity_multi
+    # )
+    # X, Y = two_drones.bayes_opt()
+    X = np.array([[0.62682851,0.57339644,0.66341361,0.40905405,0.44583309,0.75439185,0.48987495,0.58259271]])
+    Y = 1
     alpha_set_1 = lb + X.flatten()[range(4)] * (ub - lb)
     print(alpha_set_1)
     alpha_set_2 = lb + X.flatten()[range(4, 8)] * (ub - lb)
@@ -147,23 +148,33 @@ if __name__ == "__main__":
                                                                 points1, 
                                                                 plane_pos_set1, 
                                                                 waypoints1,
-                                                                np.ones_like(t_set_sta1),
+                                                                alpha_set=alpha_set_1,
                                                                 flag_fixed_point=False, 
-                                                                flag_fixed_end_point=False,
-                                                                alpha_set=alpha_set_1)
+                                                                flag_fixed_end_point=False)
     t_set_2, d_ordered_2, d_ordered_yaw_2 = poly.update_traj(t_set_sta2, 
                                                                 points2, 
                                                                 plane_pos_set2, 
                                                                 waypoints2,
-                                                                np.ones_like(t_set_sta2),
+                                                                alpha_set=alpha_set_2,
                                                                 flag_fixed_point=False, 
-                                                                flag_fixed_end_point=False,
-                                                                alpha_set=alpha_set_2)
-    with open("final_traj_13.npy", "wb") as f:
+                                                                flag_fixed_end_point=False)
+
+    with open("final_traj_13_run2.npy", "wb") as f:
         np.save(f, t_set_1)
         np.save(f, d_ordered_1)
         np.save(f, d_ordered_yaw_1)
-    with open("final_traj_14.npy", "wb") as f:
+    with open("final_traj_14_run2.npy", "wb") as f:
         np.save(f, t_set_2)
         np.save(f, d_ordered_2)
         np.save(f, d_ordered_yaw_2)
+    with open("final_traj_13_run2.npy", "rb") as f:
+        t = np.load(f)
+        d = np.load(f)
+        yaw = np.load(f)
+    with open("final_traj_14_run2.npy", "rb") as f:
+        t = np.load(f)
+        d = np.load(f)
+        yaw = np.load(f)
+
+    print(t)
+    

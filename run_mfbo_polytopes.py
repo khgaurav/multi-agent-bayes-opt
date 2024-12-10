@@ -95,8 +95,9 @@ if __name__ == "__main__":
     #             return_snap=return_snap, multicore=multicore, \
     #             max_col_err=max_col_err, N_trial=N_trial)
     print("Initializing dataset")
-    sanity_check_t = lambda t_set, d_ordered, d_ordered_yaw: \
-        poly.run_sim_loop(t_set, d_ordered, d_ordered_yaw, plane_pos_set, max_col_err=max_col_err, N_trial=N_trial)
+    # sanity_check_t = lambda t_set, d_ordered, d_ordered_yaw: \
+    #     poly.run_sim_loop(t_set, d_ordered, d_ordered_yaw, plane_pos_set, max_col_err=max_col_err, N_trial=N_trial)
+    sanity_check_t = None
     print("Start generating initial trajectory")
     t_set_sta_13, d_ordered_13, d_ordered_yaw_13 = poly.update_traj(t_set_sta_13, 
                                                             points_13, 
@@ -142,7 +143,7 @@ if __name__ == "__main__":
 
 
     print("Done generating initial trajectory")
-    optimize_alpha = False # runs optimize_alpha if true, reads from file if false
+    optimize_alpha = True # runs optimize_alpha if true, reads from file if false
     if optimize_alpha:
         print("Start generating time optimized trajectory")
         t_set_sim_13, d_ordered_13, d_ordered_yaw_13, alpha_sim_13 = poly.optimize_alpha(points_13,  
@@ -227,73 +228,3 @@ if __name__ == "__main__":
         np.save(f, np.array(alpha_sim_14))
 
     print("alpha_sim 14: {}".format(alpha))
-
-    #     low_fidelity = lambda x, debug=True, multicore=False: \
-    #         meta_low_fidelity(poly, x, t_set_sta, points, plane_pos_set, debug, lb=lb, ub=ub, multicore=multicore)
-    #     high_fidelity = lambda x, return_snap=False, multicore=False: \
-    #         meta_high_fidelity(poly, x, t_set_sim, points, plane_pos_set, lb=lb, ub=ub, \
-    #             return_snap=return_snap, multicore=multicore, \
-    #             max_col_err=max_col_err, N_trial=N_trial)
-    #     X_L, Y_L, X_H, Y_H = get_dataset_init(sample_name_, 
-    #                                           alpha_sim, 
-    #                                           low_fidelity, 
-    #                                           high_fidelity,  # not used
-    #                                           t_dim, 
-    #                                           N_L=1000, 
-    #                                           N_H=20, 
-    #                                           lb=lb, 
-    #                                           ub=ub,
-    #                                           sampling_mode=2, 
-    #                                           flag_multicore=True)
-    # print("Seed {}".format(rand_seed_))
-    
-    # np.random.seed(rand_seed_)
-    # torch.manual_seed(rand_seed_)
-
-    # # filenames
-    # fileprefix = "test_polytopes"
-    # filedir = f"./mfbo_data/{sample_name_}"
-    # logprefix = '{sample_name_}/{fileprefix}/{rand_seed_}'
-    # results_filename = f'result_{fileprefix}_{rand_seed_}.yaml'
-    # exp_data_filename = f'exp_data_{fileprefix}_{rand_seed_}.yaml'
-
-
-    # flag_check = check_result_data(filedir, results_filename, max_iter)
-    # if not flag_check:
-    #     # create agent
-    #     mfbo_model = ActiveMFDGP(
-    #         X_L=X_L, 
-    #         Y_L=Y_L, 
-    #         X_H=X_H, 
-    #         Y_H=Y_H,
-    #         lb_i=lb_i, 
-    #         ub_i=ub_i, 
-    #         rand_seed=rand_seed_,
-    #         C_L=1.0, 
-    #         C_H=10.0,
-    #         delta_L=0.9, 
-    #         delta_H=0.6, 
-    #         beta=3.0, 
-    #         N_cand=16384,
-    #         gpu_batch_size=1024,
-    #         sampling_func_L=low_fidelity,
-    #         sampling_func_H=high_fidelity,
-    #         t_set_sim=t_set_sim,
-    #         utility_mode=0, 
-    #         sampling_mode=5,
-    #         model_prefix=logprefix,
-    #         iter_create_model=200
-    #     )
-
-    #     path_exp_data = os.path.join(filedir, exp_data_filename)
-    #     if args.flag_load_exp_data and os.path.exists(path_exp_data):
-    #         mfbo_model.load_exp_data(filedir=filedir, filename=exp_data_filename)
-
-    #     mfbo_model.active_learning(
-    #         N=max_iter, 
-    #         plot=False, 
-    #         MAX_low_fidelity=0,
-    #         filedir=filedir,
-    #         filename_result=results_filename,
-    #         filename_exp=exp_data_filename
-    #     )

@@ -81,6 +81,10 @@ class MFBOAgentBase():
         self.sampling_mode = kwargs.get('sampling_mode', 0)
         self.model_prefix = kwargs.get('model_prefix', 'mfbo_test')
         self.writer = SummaryWriter('runs/mfbo/'+self.model_prefix)
+
+        self.rel_snap_array = [1]
+        self.exp_result_array = [1]
+
         
         np.random.seed(self.rand_seed)
         torch.manual_seed(self.rand_seed)
@@ -270,12 +274,12 @@ class MFBOAgentBase():
         # Y_next = 1.0*self.sampling_func_L(self.X_next[None,:])  # runs meta_low_fidelity on x_next
         self.Y_L = np.concatenate((self.Y_L, np.array(Y_next)))  # update y_l with new evaluations
         self.N_L += 1
-        self.exp_result_array.append(Y_next[0])
-        rel_snap = 1.0*self.sampling_func_L(X_next[None,:])
-        self.rel_snap_array.append(rel_snap[0])
-        print("rel_snap: {}".format(rel_snap[0]))
+        # self.exp_result_array.append(Y_next[0])
+        # rel_snap = 1.0*self.sampling_func_L(X_next[None,:])
+        self.rel_snap_array.append(Y_next[0])
+        # print("rel_snap: {}".format(rel_snap[0]))
 
-        print("N_L: {}".format(self.N_L))
+        # print("N_L: {}".format(self.N_L))
         
         # if self.X_cand.shape[0] < self.N_cand:
         #     print("Remaining X_cand: {}".format(self.X_cand.shape[0]))
@@ -568,9 +572,6 @@ class ActiveMFDGP(MFBOAgentBase):
         prob_cand_L_mean = np.empty(0)
         
         for minibatch_i, (x_batch,) in enumerate(test_loader): #TODO
-            print("x_batch")
-            print(x_batch)
-            print(x_batch.shape)
             p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_L=self.C_L, beta=self.beta, return_all=True)
 
             mean_L = np.append(mean_L, m)  # means
@@ -597,7 +598,8 @@ class TwoDrone():
                                    beta = kwargs.get("beta"),
                                    N_cand = kwargs.get("N_cand"),
                                    batch_size = kwargs.get("batch_size"),
-                                   model_prefix = kwargs.get("model_prefix")
+                                   model_prefix = kwargs.get("model_prefix"),
+                                   sampling_mode=0,
                                    )
         self.drone_2 = ActiveMFDGP(X_L = kwargs.get("X2"),
                                    Y_L = kwargs.get("Y2"),
@@ -608,7 +610,8 @@ class TwoDrone():
                                    beta = kwargs.get("beta"),
                                    N_cand = kwargs.get("N_cand"),
                                    batch_size = kwargs.get("batch_size"),
-                                   model_prefix = kwargs.get("model_prefix"))
+                                   model_prefix = kwargs.get("model_prefix"),
+                                   sampling_mode=0)
         self.drone_12 = ActiveMFDGP(X_L = kwargs.get("X12"),
                                     Y_L = kwargs.get("Y12"),
                                     t_set_sim = np.concatenate((kwargs.get("t_set_sim_1"), kwargs.get("t_set_sim_2"))),
@@ -618,7 +621,8 @@ class TwoDrone():
                                     beta = kwargs.get("beta"),
                                     N_cand = kwargs.get("N_cand"),
                                     batch_size = kwargs.get("batch_size"),
-                                    model_prefix = kwargs.get("model_prefix"))
+                                    model_prefix = kwargs.get("model_prefix"),
+                                    sampling_mode=0)
 
         self.min_time = 1  # ??
         
@@ -627,6 +631,8 @@ class TwoDrone():
 
         # variables defined in IV.a
         self.h = 0.001
+        self.lb = kwargs.get("lb_i")[0]
+        self.ub = kwargs.get("ub_i")[0]
 
         self.X = None  # sample set X to search over with acquisition function
         self.X_next = None  # selected sample (output from acquisition)
@@ -639,8 +645,8 @@ class TwoDrone():
         self.N_s = 2 # Size of candidate data points
         self.N_1 = 5 # Number of low fidelity samples to generate for a single drone to evaluate feasibility
         self.N_2 = 128 # Number of samples needed for acquisition function
-        self.C_1 = 0.8 # Threshold for dyynamic feasibility
-        self.C_2 = 0.8 # Threshold for collision feasibility
+        self.C_1 = 0.6 # Threshold for dynamic feasibility
+        self.C_2 = 0.35 # Threshold for collision feasibility
 
     def compute_next_point_cand(self):
         mean_1, var_1, prob_cand_1, _ = self.drone_1.forward_cand()
@@ -658,10 +664,10 @@ class TwoDrone():
         # check if there exists x in X where alpha_exploit(x) > 0
         for it in range(self.X.shape[0]):
             # DRONE 1
-            x_cand_denorm = self.drone_1.lb_i + np.multiply(self.X[it,self.drone_1_cols],self.drone_1.ub_i-self.drone_1.lb_i)
+            x_cand_denorm = self.lb + (self.ub - self.lb) * self.X[it, self.drone_1_cols]
             min_time_drone_1 = x_cand_denorm.dot(self.drone_1.t_set_sim)/np.sum(self.drone_1.t_set_sim)
             # DRONE 2
-            x_cand_denorm = self.drone_2.lb_i + np.multiply(self.X[it,:self.drone_2_cols],self.drone_2.ub_i-self.drone_2.lb_i)
+            x_cand_denorm = self.lb + (self.ub - self.lb) * self.X[it, self.drone_2_cols]
             min_time_drone_2 = x_cand_denorm.dot(self.drone_2.t_set_sim)/np.sum(self.drone_2.t_set_sim)
             # ALPHA_EI
             alpha_ei = max(self.drone_1.min_time, self.drone_2.min_time) - max(min_time_drone_1, min_time_drone_2)
@@ -684,13 +690,15 @@ class TwoDrone():
             X_next = self.X[alpha_explore.argmax(),:]
             print(f"alpha_explore: {alpha_explore}")
         # set min time based on upper and lower bounds
-        x_denorm_1 = self.drone_1.lb_i + np.multiply(self.X_next[:self.drone_1_cols], self.drone_1.ub_i - self.drone_1.lb_i)
+        x_denorm_1 = self.lb + (self.ub - self.lb) * X_next[self.drone_1_cols]
+        # self.drone_1.lb_i + np.multiply(self.X_next[:self.drone_1_cols], self.drone_1.ub_i - self.drone_1.lb_i)
         self.drone_1.min_time = x_denorm_1.dot(self.drone_1.t_set_sim)
-        x_denorm_2 = self.drone_2.lb_i + np.multiply(self.X_next[:self.drone_2_cols], self.drone_2.ub_i - self.drone_2.lb_i)
+        x_denorm_2 = self.lb + (self.ub - self.lb) * X_next[self.drone_2_cols]
+        # self.drone_2.lb_i + np.multiply(self.X_next[:self.drone_2_cols], self.drone_2.ub_i - self.drone_2.lb_i)
         self.drone_2.min_time = x_denorm_2.dot(self.drone_2.t_set_sim)
         
         # self.alpha_min_cand = self.lb_i + np.multiply(self.X_next, self.ub_i-self.lb_i)
-        return X_next
+        return X_next.reshape(1, -1)
 
     def evaluate_x_next(self, X_next):
         Y_next = np.array([0.0])
@@ -698,7 +706,7 @@ class TwoDrone():
         if Y_next_1 == np.array([1.0]):
             Y_next_2 = 1.0 * self.eval_func_2(X_next[:, self.drone_2_cols])
             if Y_next_2 == np.array([1.0]):
-                Y_next_12 = self.eval_func_12(X_next)
+                Y_next_12 = self.eval_func_12(X_next[:, self.drone_1_cols], X_next[:, self.drone_2_cols])
                 if Y_next_12 == np.array([1.0]):
                     Y_next = np.array([1.0])
         return Y_next
@@ -713,14 +721,22 @@ class TwoDrone():
         self.drone_2.create_model(num_epochs=iters)
         self.drone_12.create_model(num_epochs=iters)
 
-    def bayes_opt(self, iters=10):
-        self.update_models()
-        for _ in range(iters):
+    def bayes_opt(self, min_iters=10, max_iters=100):
+        self.update_models(iters=500)
+        print(self.drone_1.predict_single_point(self.drone_1.X_L[(self.drone_1.Y_L == 1).T])[2])
+        print(self.drone_1.predict_single_point(self.drone_1.X_L[(self.drone_1.Y_L == 0).T])[2])
+        # print(self.drone_1.forward_cand()[2])
+        for it in range(max_iters):
             self.X = self.get_dataset()
+            print(np.round(self.X, 3))
             X_next = self.compute_next_point_cand()
             Y_next = self.evaluate_x_next(X_next)
+            print(f"{X_next} {Y_next}")
             self.update_datasets(X_next, Y_next)
-        return X_next, Y_next
+
+            if it >= min_iters-1 and Y_next[0] == 1:
+                return X_next, Y_next
+        
         
     def sample_traj(self, drone, X_F):
         # x = np.empty((self.N_1, drone.dim))
@@ -728,34 +744,42 @@ class TwoDrone():
         while X.shape[0] < self.N_1:
             X_t = drone.sample_data(self.N_s)
             # Rescale X_t with X_F
-            X_t[:, 0] = (X_t[:, 0]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
-            X_t[:, 1] = (X_t[:, 1]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
-            X_t[:, 2] = (X_t[:, 2]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
-            X_t[:, 3] = (X_t[:, 3]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
+            X_t_copy = X_t.copy()
+            X_t_copy[:, 0] = (X_t[:, 0]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
+            X_t_copy[:, 1] = (X_t[:, 1]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
+            X_t_copy[:, 2] = (X_t[:, 2]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
+            X_t_copy[:, 3] = (X_t[:, 3]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
 
-            print(X_t)
-            X_t = drone.lb_i + np.multiply(X_t, drone.ub_i-drone.lb_i)
-            print(X_t)
-
-            print(drone.predict_single_point(X_t)[2])
-            valid_rows = drone.predict_single_point(X_t)[2] > self.C_1
-            X = X_t[valid_rows.T, :]
+            # X_t = drone.lb_i + np.multiply(X_t, drone.ub_i-drone.lb_i)
+            # print(drone.predict_single_point(X_t)[2])
+            valid_rows = drone.predict_single_point(X_t_copy)[2] > self.C_1
+            X = np.vstack([X, X_t_copy[valid_rows.T, :]])
             # for x in X_t:
             #     if drone.predict_single_point(x)[2] > self.C_1:
             #         X = np.vstack([X, x])
-            print(f"Sampled X: {X}")
-        return X
+        return X[:self.N_1, :]
 
     def get_dataset(self):
-        X_F = self.drone_1.sample_data(self.N_s)
+        # X_F = self.drone_1.sample_data(self.N_s)
+        X_F = self.drone_1.sample_data(1)
+        X_F = np.vstack([X_F]*self.N_s)
         X = np.empty((0,self.drone_1.dim + self.drone_2.dim))
+        print(X_F)
         while X.shape[0] < self.N_2:
+            # print("drone_12")
             X_t_1 = self.sample_traj(self.drone_1, X_F)
             X_t_2 = self.sample_traj(self.drone_2, X_F)
-            for x1 in X_t_1:
-                for x2 in X_t_2:
-                    x = np.hstack([x1, x2])
-                    if self.drone_12.predict_single_point(x)[2] > self.C_2:
-                        print("Success")
-                        X = np.vstack([X, x])
-        return X
+            x = np.hstack([X_t_1, X_t_2])
+            valid_rows = self.drone_12.predict_single_point(x)[2] > self.C_2
+            # print(self.drone_12.predict_single_point(x)[2])
+            X = np.vstack([X, x[valid_rows.T, :]])
+            print(len(X))
+            # for x1 in X_t_1:
+            #     for x2 in X_t_2:
+            #         x = np.hstack([x1, x2])
+            #         print("drone12")
+            #         print(self.drone_12.predict_single_point(x)[2])
+            #         if self.drone_12.predict_single_point(x)[2] > self.C_2:
+            #             print("Success")
+            #             X = np.vstack([X, x])
+        return X[:self.N_2, :]
