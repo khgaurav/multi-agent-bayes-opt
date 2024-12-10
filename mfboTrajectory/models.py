@@ -41,6 +41,7 @@ from pyTrajectoryUtils.pyTrajectoryUtils.utils import *
 LAMBDAS = np.array([0.41, 0.4, 0.37, 0.44, 0.39])[:, np.newaxis]
 COEFS = np.array([-1854.8214151, 3516.89893646, 221.29346712,
                   128.12323805, -2010.49422654])[:, np.newaxis]
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # use gpu if available
 
 class MFDeepGPLayer(AbstractDeepGPLayer):
     def __init__(self, input_dims, output_dims, prev_dims=0, num_inducing=512, inducing_points=None, prev_layer=None):
@@ -89,8 +90,8 @@ class MFDeepGPLayer(AbstractDeepGPLayer):
             )
     
     def covar(self, x):
-        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long())#.cuda())
-        x_prev = torch.index_select(x, -1, torch.arange(self.prev_dims).long())#.cuda())
+        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long().to(device))
+        x_prev = torch.index_select(x, -1, torch.arange(self.prev_dims).long().to(device))
         covar_x = self.covar_module(x_input)
         if self.prev_dims > 0:
             k_corr = self.covar_module_corr(x_input)
@@ -104,7 +105,7 @@ class MFDeepGPLayer(AbstractDeepGPLayer):
 
     def forward(self, x):
         # https://github.com/amzn/emukit/blob/master/emukit/examples/multi_fidelity_dgp/multi_fidelity_deep_gp.py
-        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long())#.cuda())
+        x_input = torch.index_select(x, -1, torch.arange(self.prev_dims,self.input_dims).long().to(device))
         mean_x = self.mean_module(x_input) # self.linear_layer(x).squeeze(-1)
         covar_x = self.covar(x)
             

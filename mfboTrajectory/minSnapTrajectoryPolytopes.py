@@ -1418,7 +1418,55 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             )
         )
         
-        fig = go.Figure(data=mesh_data)
+        frames = []
+        for i in range(1, len(status1)):
+            frame_data = [
+            go.Scatter3d(
+                x=status1[:i,0], 
+                y=status1[:i,1], 
+                z=status1[:i,2],
+                # mode='markers',
+                name="Drone 1 Trajectory",
+                line=dict(
+                    color='green',
+                    width=3
+                ),
+                marker=dict(
+                    size=5,
+                    color='green',
+                ),
+            ),
+            go.Scatter3d(
+                x=status2[:i,0], 
+                y=status2[:i,1], 
+                z=status2[:i,2],
+                # mode='lines',
+                name="Drone 2 Trajectory",
+                line=dict(
+                    color='red',
+                    width=3
+                ),
+                marker=dict(
+                    size=5,
+                    color='red',
+                ),
+            )
+            ]
+            frames.append(go.Frame(data=frame_data, name=str(i)))
+        
+        fig = go.Figure(
+            data=mesh_data,
+            frames=frames,
+            layout=go.Layout(
+                updatemenus=[dict(
+                    type="buttons",
+                    buttons=[dict(label="Play",
+                                  method="animate",
+                                  args=[None, {"frame": {"duration": 5, "redraw": True},
+                                               "fromcurrent": True, "mode": "immediate"}])])]
+            )
+        )
+        
         fig.update_layout(scene_aspectmode='data')
         fig.show()
 
