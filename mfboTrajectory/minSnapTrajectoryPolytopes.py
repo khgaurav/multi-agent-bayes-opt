@@ -112,7 +112,62 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                     return False
 
         return True
-    
+    def sanity_check_multi(self, t_set1, d_ordered1, d_ordered_yaw1, t_set2, d_ordered2, d_ordered_yaw2):
+        # Drone 1
+        flag_loop = self.check_flag_loop(t_set1,d_ordered1)
+        N_POLY = t_set1.shape[0]
+        
+        status1 = np.zeros((self.N_POINTS*N_POLY,18))
+        if np.all(t_set1 == t_set2):
+            print("X_L1_t and X_L2_t are same")
+        for der in range(5):
+            if flag_loop:
+                V_t = self.generate_sampling_matrix_loop(t_set1, N=self.N_POINTS, der=der)
+            else:
+                V_t = self.generate_sampling_matrix(t_set1, N=self.N_POINTS, der=der, endpoint=True)
+            status1[:,3*der:3*(der+1)] = V_t.dot(d_ordered1)
+        
+        if np.all(d_ordered_yaw1 != None):
+            status_yaw_xy = np.zeros((self.N_POINTS*N_POLY,3,2))
+            for der in range(3):
+                if flag_loop:
+                    V_t = self.generate_sampling_matrix_loop_yaw(t_set1, N=self.N_POINTS, der=der)
+                else:
+                    V_t = self.generate_sampling_matrix_yaw(t_set1, N=self.N_POINTS, der=der, endpoint=True)
+                status_yaw_xy[:,der,:] = V_t.dot(d_ordered_yaw1)
+            status1[:,15:] = self.get_yaw_der(status_yaw_xy)
+
+        flag_loop = self.check_flag_loop(t_set2,d_ordered2)
+        N_POLY = t_set2.shape[0]
+        # Drone 2
+        status2 = np.zeros((self.N_POINTS*N_POLY,18))
+
+        for der in range(5):
+            if flag_loop:
+                V_t = self.generate_sampling_matrix_loop(t_set2, N=self.N_POINTS, der=der)
+            else:
+                V_t = self.generate_sampling_matrix(t_set2, N=self.N_POINTS, der=der, endpoint=True)
+            status2[:,3*der:3*(der+1)] = V_t.dot(d_ordered2)
+        
+        if np.all(d_ordered_yaw2 != None):
+            status_yaw_xy = np.zeros((self.N_POINTS*N_POLY,3,2))
+            for der in range(3):
+                if flag_loop:
+                    V_t = self.generate_sampling_matrix_loop_yaw(t_set2, N=self.N_POINTS, der=der)
+                else:
+                    V_t = self.generate_sampling_matrix_yaw(t_set2, N=self.N_POINTS, der=der, endpoint=True)
+                status_yaw_xy[:,der,:] = V_t.dot(d_ordered_yaw2)
+            status2[:,15:] = self.get_yaw_der(status_yaw_xy)
+            
+        # Check if 2 drones collide. pos = np.array(status[:,0:3])
+        pos1 = np.array(status1[:,0:3])
+        pos2 = np.array(status2[:,0:3])
+        dist = np.linalg.norm(pos1 - pos2, axis=1)
+        if np.any(dist < 0.2):
+            print(f"Drone 1:{pos1} and 2:{pos2} collide")
+            return False
+        print("No collision")
+        return True
     ###############################################################################
     def generate_sum_matrix(self, x, der=4, flag_loop=False):
         Q = np.zeros((self.MAX_POLY_DEG+1,self.MAX_POLY_DEG+1))
@@ -708,6 +763,31 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                 flag_fixed_point=flag_fixed_point)
         
         return self.sanity_check(t_set_new, d_ordered, d_ordered_yaw)
+    
+    def wrapper_sanity_check_multi(self, args):
+        points1 = args[0]
+        plane_pos_set1 = args[1]
+        waypoints1 = args[2]
+        t_set1 = args[3]
+        alpha_set1 = args[4]
+        flag_fixed_point = args[5]
+        
+        t_set_new1, d_ordered1, d_ordered_yaw1 = \
+            self.update_traj(t_set1, points1, plane_pos_set1, waypoints=waypoints1, alpha_set=alpha_set1, \
+                yaw_mode=self.yaw_mode, flag_run_sim=False, \
+                flag_fixed_end_point=True, \
+                flag_fixed_point=flag_fixed_point)
+        points2 = args[6]
+        plane_pos_set2 = args[7]
+        waypoints2 = args[8]
+        t_set2 = args[9]
+        alpha_set2 = args[10]
+        t_set_new2, d_ordered2, d_ordered_yaw2 = \
+            self.update_traj(t_set2, points2, plane_pos_set2, waypoints=waypoints2, alpha_set=alpha_set2, \
+                yaw_mode=self.yaw_mode, flag_run_sim=False, \
+                flag_fixed_end_point=True, \
+                flag_fixed_point=flag_fixed_point)
+        return self.sanity_check_multi(t_set_new1, d_ordered1, d_ordered_yaw1, t_set_new2, d_ordered2, d_ordered_yaw2)
     
     # run simulation with multiple loops & rampin
     def run_sim_loop(self, t_set, d_ordered, d_ordered_yaw, plane_pos_set, \
