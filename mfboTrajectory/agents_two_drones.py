@@ -60,17 +60,12 @@ class MFBOAgentBase():
         self.X_L = kwargs.get('X_L', None)
         self.Y_L = kwargs.get('Y_L', None)
         self.N_L = self.X_L.shape[0]
-        # self.X_H = kwargs.get('X_H', None)
-        # self.Y_H = kwargs.get('Y_H', None)
-        # self.N_H = self.X_H.shape[0]
-        # self.N_H_i = self.X_H.shape[0]
         self.lb_i = kwargs.get('lb_i', None)
         self.ub_i = kwargs.get('ub_i', None)
         self.rand_seed = kwargs.get('rand_seed', None)
         self.C_L = kwargs.get('C_L', None)
         self.C_H = kwargs.get('C_H', None)
         self.sampling_func_L = kwargs.get('sampling_func_L', None)
-        # self.sampling_func_H = kwargs.get('sampling_func_H', None)
         self.t_set_sim = kwargs.get('t_set_sim', None)
         self.traj_wp_sampler_mean = kwargs.get('traj_wp_sampler_mean', 0.5)
         self.traj_wp_sampler_var = kwargs.get('traj_wp_sampler_var', 0.2)
@@ -220,44 +215,44 @@ class MFBOAgentBase():
     def forward_cand(self):
         raise "Not Implemented"
     
-    # gets x from X using acquisition function (line 20)
-    # self.X_next = x_i 
-    # self.X_cand = X
-    # TO DO update acquisition functions for multi agent
-    def compute_next_point_cand(self):
-        mean, var, prob_cand, prob_cand_mean = self.forward_cand()
+    # # gets x from X using acquisition function (line 20)
+    # # self.X_next = x_i 
+    # # self.X_cand = X
+    # # TO DO update acquisition functions for multi agent
+    # def compute_next_point_cand(self):
+    #     mean, var, prob_cand, prob_cand_mean = self.forward_cand()
         
-        # TO DO is eq 17 from mfbo, need to modify for eq 21
-        alpha_explore = -np.abs(mean)/(var + 1e-9)*self.C_L
+    #     # TO DO is eq 17 from mfbo, need to modify for eq 21
+    #     alpha_explore = -np.abs(mean)/(var + 1e-9)*self.C_L
         
-        # find alpha_exploit following mfbo eq. 19
-        self.flag_found_ei = False
-        max_ei_idx_L = -1  # -1 if alpha_exploit not updated
-        max_ei_L = 0  # alpha_exploit initially set to 0
-        min_time_tmp = self.min_time  # xbar
-        # check if there exists x in X where alpha_exploit(x) > 0
-        for it in range(self.X_cand.shape[0]):
-            x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
-            min_time_tmp2 = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
-            max_ei_tmp_L = (self.min_time-min_time_tmp2)*prob_cand[it]  # alpha_ei * p(y=1|x)
-            if max_ei_tmp_L > max_ei_L and prob_cand[it] > 1-self.delta_L: # if new alpha_exploit is larger than old one & prob >= h
-                max_ei_L = max_ei_tmp_L  # update alpha_exploit
-                max_ei_idx_L = it
+    #     # find alpha_exploit following mfbo eq. 19
+    #     self.flag_found_ei = False
+    #     max_ei_idx_L = -1  # -1 if alpha_exploit not updated
+    #     max_ei_L = 0  # alpha_exploit initially set to 0
+    #     min_time_tmp = self.min_time  # xbar
+    #     # check if there exists x in X where alpha_exploit(x) > 0
+    #     for it in range(self.X_cand.shape[0]):
+    #         x_cand_denorm = self.lb_i + np.multiply(self.X_cand[it,:self.t_dim],self.ub_i-self.lb_i)
+    #         min_time_tmp2 = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+    #         max_ei_tmp_L = (self.min_time-min_time_tmp2)*prob_cand[it]  # alpha_ei * p(y=1|x)
+    #         if max_ei_tmp_L > max_ei_L and prob_cand[it] > 1-self.delta_L: # if new alpha_exploit is larger than old one & prob >= h
+    #             max_ei_L = max_ei_tmp_L  # update alpha_exploit
+    #             max_ei_idx_L = it
 
-        self.X_next_fidelity = 0  # TO DO remove all instances
-        # alpha_exploit
-        if max_ei_idx_L != -1:
-            self.flag_found_ei = True
-            self.X_next = self.X_cand[max_ei_idx_L,:]
-            self.min_time_cand = min_time_tmp
-            print(f"alpha_exploit: {max_ei_L}")
-        # alpha_explore
-        else:
-            self.X_next = self.X_cand[alpha_explore.argmax()] ### LINE 6 IN ALGORITHM 1 ###
-            x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i) # TODO figure out what to change here for candidate stuff
-            self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
-            print(f"alpha_explore: {alpha_explore}")
-        self.alpha_min_cand = self.lb_i + np.multiply(self.X_next[:,:self.t_dim],self.ub_i-self.lb_i)
+    #     self.X_next_fidelity = 0  # TO DO remove all instances
+    #     # alpha_exploit
+    #     if max_ei_idx_L != -1:
+    #         self.flag_found_ei = True
+    #         self.X_next = self.X_cand[max_ei_idx_L,:]
+    #         self.min_time_cand = min_time_tmp
+    #         print(f"alpha_exploit: {max_ei_L}")
+    #     # alpha_explore
+    #     else:
+    #         self.X_next = self.X_cand[alpha_explore.argmax()] ### LINE 6 IN ALGORITHM 1 ###
+    #         x_cand_denorm = self.lb_i + np.multiply(self.X_cand[ent_H.argmax(),:self.t_dim],self.ub_i-self.lb_i) # TODO figure out what to change here for candidate stuff
+    #         self.min_time_cand = x_cand_denorm.dot(self.t_set_sim)/np.sum(self.t_set_sim)
+    #         print(f"alpha_explore: {alpha_explore}")
+    #     self.alpha_min_cand = self.lb_i + np.multiply(self.X_next[:,:self.t_dim],self.ub_i-self.lb_i)
 
     # add points to dataset
     # sample more points for X_cand
@@ -477,8 +472,8 @@ class ActiveMFDGP(MFBOAgentBase):
         self.batch_size = kwargs.get('gpu_batch_size', 256)
 
     def create_model(self, num_epochs=500):
-        self.train_x_L = torch.tensor(self.X_L).float().cuda()
-        self.train_y_L = torch.tensor(self.Y_L).float().cuda()
+        self.train_x_L = torch.tensor(self.X_L).float()#.cuda()
+        self.train_y_L = torch.tensor(self.Y_L).float()#.cuda()
         self.train_dataset_L = TensorDataset(self.train_x_L, self.train_y_L)
         self.train_loader_L = DataLoader(self.train_dataset_L, batch_size=self.batch_size, shuffle=True)
 
@@ -486,7 +481,7 @@ class ActiveMFDGP(MFBOAgentBase):
         train_y = [self.train_y_L]
         
         if not hasattr(self, 'clf'):
-            self.clf = MFDeepGPC(train_x, train_y, num_inducing=128).cuda()
+            self.clf = MFDeepGPC(train_x, train_y, num_inducing=100)#.cuda() # CHANGED was 128
 
         optimizer = torch.optim.Adam([
             {'params': self.clf.parameters()},
@@ -513,7 +508,7 @@ class ActiveMFDGP(MFBOAgentBase):
 
                 with torch.no_grad():
                     self.X_cand = self.sample_data(self.N_cand)
-                    test_x = torch.tensor(self.X_cand).float().cuda()
+                    test_x = torch.tensor(self.X_cand).float()#.cuda()
                     test_dataset = TensorDataset(test_x)
                     test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
                     # test_output = self.clf(self.X_test, fidelity=1)
@@ -563,7 +558,7 @@ class ActiveMFDGP(MFBOAgentBase):
             self.X_cand = self.X_cand[(np.min(self.X_cand[:,:self.t_dim]-self.lb_i,axis=1)>=0) \
                                                      & (np.max(self.X_cand[:,:self.t_dim]-self.ub_i,axis=1)<=0),:]
         
-        test_x = torch.tensor(self.X_cand).float().cuda()
+        test_x = torch.tensor(self.X_cand).float()#.cuda()
         test_dataset = TensorDataset(test_x)
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -573,6 +568,9 @@ class ActiveMFDGP(MFBOAgentBase):
         prob_cand_L_mean = np.empty(0)
         
         for minibatch_i, (x_batch,) in enumerate(test_loader): #TODO
+            print("x_batch")
+            print(x_batch)
+            print(x_batch.shape)
             p, m, v, pm = self.clf.predict_proba_MF(x_batch, fidelity=1, C_L=self.C_L, beta=self.beta, return_all=True)
 
             mean_L = np.append(mean_L, m)  # means
@@ -583,16 +581,44 @@ class ActiveMFDGP(MFBOAgentBase):
         return mean_L, var_L, prob_cand_L, prob_cand_L_mean
     
     def predict_single_point(self, X):
-        X_tensor = torch.tensor(X).float().cuda()
+        X_tensor = torch.tensor(X).float()#.cuda()
         with torch.no_grad():
             prob, mean, var, prob_mean = self.clf.predict_proba_MF(X_tensor, fidelity=1, C_L=self.C_L, beta=self.beta, return_all=True)
-        return mean.cpu().numpy(), var.cpu().numpy(), prob.cpu().numpy()
+        return mean, var, prob[:, 1]
 
 class TwoDrone():
-    def __init__(self, poly):
-        self.drone_1 = ActiveMFDGP()
-        self.drone_2 = ActiveMFDGP()
-        self.drone_12 = ActiveMFDGP()
+    def __init__(self, **kwargs):
+        self.drone_1 = ActiveMFDGP(X_L = kwargs.get("X1"),
+                                   Y_L = kwargs.get("Y1"),
+                                   t_set_sim = kwargs.get("t_set_sim_1"),
+                                   lb_i = kwargs.get("lb_i"),
+                                   ub_i = kwargs.get("ub_i"),
+                                   rand_seed=kwargs.get("rand_seed", None),
+                                   beta = kwargs.get("beta"),
+                                   N_cand = kwargs.get("N_cand"),
+                                   batch_size = kwargs.get("batch_size"),
+                                   model_prefix = kwargs.get("model_prefix")
+                                   )
+        self.drone_2 = ActiveMFDGP(X_L = kwargs.get("X2"),
+                                   Y_L = kwargs.get("Y2"),
+                                   t_set_sim = kwargs.get("t_set_sim_2"),
+                                   lb_i = kwargs.get("lb_i"),
+                                   ub_i = kwargs.get("ub_i"),
+                                   rand_seed=kwargs.get("rand_seed", None),
+                                   beta = kwargs.get("beta"),
+                                   N_cand = kwargs.get("N_cand"),
+                                   batch_size = kwargs.get("batch_size"),
+                                   model_prefix = kwargs.get("model_prefix"))
+        self.drone_12 = ActiveMFDGP(X_L = kwargs.get("X12"),
+                                    Y_L = kwargs.get("Y12"),
+                                    t_set_sim = np.concatenate((kwargs.get("t_set_sim_1"), kwargs.get("t_set_sim_2"))),
+                                    lb_i = kwargs.get("lb_i"),
+                                    ub_i = kwargs.get("ub_i"),
+                                    rand_seed=kwargs.get("rand_seed", None),
+                                    beta = kwargs.get("beta"),
+                                    N_cand = kwargs.get("N_cand"),
+                                    batch_size = kwargs.get("batch_size"),
+                                    model_prefix = kwargs.get("model_prefix"))
 
         self.min_time = 1  # ??
         
@@ -606,18 +632,17 @@ class TwoDrone():
         self.X_next = None  # selected sample (output from acquisition)
 
         # stuff
-        self.poly = poly
-        self.eval_func_1  # meta_low_fidelity
-        self.eval_func_2
-        self.eval_func_12  # meta_low_fidelity_multi
+        self.eval_func_1 = kwargs.get("eval_func_1")  # meta_low_fidelity
+        self.eval_func_2 = kwargs.get("eval_func_2")
+        self.eval_func_12 = kwargs.get("eval_func_12")  # meta_low_fidelity_multi
 
         self.N_s = 2 # Size of candidate data points
         self.N_1 = 5 # Number of low fidelity samples to generate for a single drone to evaluate feasibility
         self.N_2 = 128 # Number of samples needed for acquisition function
         self.C_1 = 0.8 # Threshold for dyynamic feasibility
         self.C_2 = 0.8 # Threshold for collision feasibility
+
     def compute_next_point_cand(self):
-        self.X = self.get_dataset()
         mean_1, var_1, prob_cand_1, _ = self.drone_1.forward_cand()
         mean_2, var_2, prob_cand_2, _ = self.drone_2.forward_cand()
         mean_12, var_12, prob_cand_12, _ = self.drone_12.forward_cand()
@@ -689,11 +714,12 @@ class TwoDrone():
         self.drone_12.create_model(num_epochs=iters)
 
     def bayes_opt(self, iters=10):
+        self.update_models()
         for _ in range(iters):
+            self.X = self.get_dataset()
             X_next = self.compute_next_point_cand()
             Y_next = self.evaluate_x_next(X_next)
             self.update_datasets(X_next, Y_next)
-            self.update_models()
         return X_next, Y_next
         
     def sample_traj(self, drone, X_F):
@@ -706,20 +732,30 @@ class TwoDrone():
             X_t[:, 1] = (X_t[:, 1]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
             X_t[:, 2] = (X_t[:, 2]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
             X_t[:, 3] = (X_t[:, 3]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
-            X = np.vstack([X, x] for x in X_t if drone.predict_single_point(x)[2] < self.C_1)
+
+            print(X_t)
+            X_t = drone.lb_i + np.multiply(X_t, drone.ub_i-drone.lb_i)
+            print(X_t)
+
+            print(drone.predict_single_point(X_t)[2])
+            valid_rows = drone.predict_single_point(X_t)[2] > self.C_1
+            X = X_t[valid_rows.T, :]
+            # for x in X_t:
+            #     if drone.predict_single_point(x)[2] > self.C_1:
+            #         X = np.vstack([X, x])
             print(f"Sampled X: {X}")
         return X
 
     def get_dataset(self):
         X_F = self.drone_1.sample_data(self.N_s)
-        X = X_F
+        X = np.empty((0,self.drone_1.dim + self.drone_2.dim))
         while X.shape[0] < self.N_2:
             X_t_1 = self.sample_traj(self.drone_1, X_F)
             X_t_2 = self.sample_traj(self.drone_2, X_F)
             for x1 in X_t_1:
                 for x2 in X_t_2:
                     x = np.hstack([x1, x2])
-                    if self.drone_12.predict_single_point(x)[2] < self.C_2:
+                    if self.drone_12.predict_single_point(x)[2] > self.C_2:
                         print("Success")
                         X = np.vstack([X, x])
         return X
