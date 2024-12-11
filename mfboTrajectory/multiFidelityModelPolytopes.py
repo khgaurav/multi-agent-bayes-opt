@@ -461,11 +461,33 @@ def get_dataset_init_multi(name,
     while True:
         X_L1_t = sample_data(batch_size)
         X_L2_t = sample_data(batch_size)
+
         # Ensure both X_L1 and X_L2 are of the same length
         if X_L1_t.shape[0] > X_L2_t.shape[0]:
             X_L1_t = X_L1_t[:X_L2_t.shape[0],:]
         elif X_L1_t.shape[0] < X_L2_t.shape[0]:
             X_L2_t = X_L2_t[:X_L1_t.shape[0],:]
+
+        # scale X_L2_t so time matches up to X_L1_t
+        time12 = X_L1_t[:, 0] * 10. + X_L1_t[:, 1] * 5.
+        time34 = X_L1_t[:, 2] * 5. + X_L1_t[:, 3] * 10.
+        X_t12 = np.sum(X_L2_t[:, 0:2], axis=1)
+        X_t34 = np.sum(X_L2_t[:, 3:4], axis=1)
+        X_L2_t_copy = X_L2_t.copy()
+        X_L2_t_copy[:, 0] = (time12 - (5. * X_t12)) / (10. - 5.)
+        X_L2_t_copy[:, 1] = (time12 - (10. * X_t12)) / (5. - 10.)
+        X_L2_t_copy[:, 2] = (time34 - (10. * X_t34)) / (5. - 10.)
+        X_L2_t_copy[:, 3] = (time34 - (5. * X_t34)) / (10. - 5.)
+        # keep rows with positive values only
+        status = np.all(X_L2_t_copy > 0, axis=1)
+        if sum(status) == 0:
+            continue
+        X_L1_t = X_L1_t[status, :]
+        X_L2_t = X_L2_t_copy[status, :]
+
+        print(X_L1_t)
+        print(X_L2_t)
+        
         labels_low = low_fidelity(X_L1_t, X_L2_t, debug=False, multicore=flag_multicore)
         Y_L_t = 1.0*labels_low
         if np.where(Y_L_t == 0)[0].shape[0] > 0:
