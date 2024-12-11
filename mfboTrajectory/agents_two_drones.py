@@ -477,8 +477,8 @@ class ActiveMFDGP(MFBOAgentBase):
         self.batch_size = kwargs.get('gpu_batch_size', 256)
 
     def create_model(self, num_epochs=500):
-        self.train_x_L = torch.tensor(self.X_L).float()#.cuda()
-        self.train_y_L = torch.tensor(self.Y_L).float()#.cuda()
+        self.train_x_L = torch.tensor(self.X_L).float().cuda()
+        self.train_y_L = torch.tensor(self.Y_L).float().cuda()
         self.train_dataset_L = TensorDataset(self.train_x_L, self.train_y_L)
         self.train_loader_L = DataLoader(self.train_dataset_L, batch_size=self.batch_size, shuffle=True)
 
@@ -486,7 +486,7 @@ class ActiveMFDGP(MFBOAgentBase):
         train_y = [self.train_y_L]
         
         if not hasattr(self, 'clf'):
-            self.clf = MFDeepGPC(train_x, train_y, num_inducing=128)#.cuda()
+            self.clf = MFDeepGPC(train_x, train_y, num_inducing=128).cuda()
 
         optimizer = torch.optim.Adam([
             {'params': self.clf.parameters()},
@@ -513,7 +513,7 @@ class ActiveMFDGP(MFBOAgentBase):
 
                 with torch.no_grad():
                     self.X_cand = self.sample_data(self.N_cand)
-                    test_x = torch.tensor(self.X_cand).float()#.cuda()
+                    test_x = torch.tensor(self.X_cand).float().cuda()
                     test_dataset = TensorDataset(test_x)
                     test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
                     # test_output = self.clf(self.X_test, fidelity=1)
@@ -563,7 +563,7 @@ class ActiveMFDGP(MFBOAgentBase):
             self.X_cand = self.X_cand[(np.min(self.X_cand[:,:self.t_dim]-self.lb_i,axis=1)>=0) \
                                                      & (np.max(self.X_cand[:,:self.t_dim]-self.ub_i,axis=1)<=0),:]
         
-        test_x = torch.tensor(self.X_cand).float()#.cuda()
+        test_x = torch.tensor(self.X_cand).float().cuda()
         test_dataset = TensorDataset(test_x)
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -581,6 +581,12 @@ class ActiveMFDGP(MFBOAgentBase):
             prob_cand_L_mean = np.append(prob_cand_L_mean, pm[:,1])
         
         return mean_L, var_L, prob_cand_L, prob_cand_L_mean
+    
+    def predict_single_point(self, X):
+        X_tensor = torch.tensor(X).float().cuda()
+        with torch.no_grad():
+            prob, mean, var, prob_mean = self.clf.predict_proba_MF(X_tensor, fidelity=1, C_L=self.C_L, beta=self.beta, return_all=True)
+        return mean.cpu().numpy(), var.cpu().numpy(), prob.cpu().numpy()
 
 class TwoDrone():
     def __init__(self, poly):
@@ -589,7 +595,7 @@ class TwoDrone():
         self.drone_12 = ActiveMFDGP()
 
         self.min_time = 1  # ??
-
+        
         self.drone_1_cols = range(4)
         self.drone_2_cols = range(4, 8)
 
@@ -605,7 +611,13 @@ class TwoDrone():
         self.eval_func_2
         self.eval_func_12  # meta_low_fidelity_multi
 
+        self.N_s = 2 # Size of candidate data points
+        self.N_1 = 5 # Number of low fidelity samples to generate for a single drone to evaluate feasibility
+        self.N_2 = 128 # Number of samples needed for acquisition function
+        self.C_1 = 0.8 # Threshold for dyynamic feasibility
+        self.C_2 = 0.8 # Threshold for collision feasibility
     def compute_next_point_cand(self):
+        self.X = self.get_dataset()
         mean_1, var_1, prob_cand_1, _ = self.drone_1.forward_cand()
         mean_2, var_2, prob_cand_2, _ = self.drone_2.forward_cand()
         mean_12, var_12, prob_cand_12, _ = self.drone_12.forward_cand()
@@ -683,3 +695,31 @@ class TwoDrone():
             self.update_datasets(X_next, Y_next)
             self.update_models()
         return X_next, Y_next
+        
+    def sample_traj(self, drone, X_F):
+        # x = np.empty((self.N_1, drone.dim))
+        X = np.empty((0, drone.dim))
+        while X.shape[0] < self.N_1:
+            X_t = drone.sample_data(self.N_s)
+            # Rescale X_t with X_F
+            X_t[:, 0] = (X_t[:, 0]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
+            X_t[:, 1] = (X_t[:, 1]/(X_t[:, 0] + X_t[:, 1])) * (X_F[:, 0] + X_F[:, 1])
+            X_t[:, 2] = (X_t[:, 2]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
+            X_t[:, 3] = (X_t[:, 3]/(X_t[:, 2] + X_t[:, 3])) * (X_F[:, 2] + X_F[:, 3])
+            X = np.vstack([X, x] for x in X_t if drone.predict_single_point(x)[2] < self.C_1)
+            print(f"Sampled X: {X}")
+        return X
+
+    def get_dataset(self):
+        X_F = self.drone_1.sample_data(self.N_s)
+        X = X_F
+        while X.shape[0] < self.N_2:
+            X_t_1 = self.sample_traj(self.drone_1, X_F)
+            X_t_2 = self.sample_traj(self.drone_2, X_F)
+            for x1 in X_t_1:
+                for x2 in X_t_2:
+                    x = np.hstack([x1, x2])
+                    if self.drone_12.predict_single_point(x)[2] < self.C_2:
+                        print("Success")
+                        X = np.vstack([X, x])
+        return X
