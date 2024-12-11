@@ -164,9 +164,9 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         pos2 = np.array(status2[:,0:3])
         dist = np.linalg.norm(pos1 - pos2, axis=1)
         if np.any(dist < 0.2):
-            print(f"Drone 1:{pos1} and 2:{pos2} collide")
+        #     print(f"Drone 1:{pos1} and 2:{pos2} collide")
             return False
-        print("No collision")
+        # print("No collision")
         return True
     ###############################################################################
     def generate_sum_matrix(self, x, der=4, flag_loop=False):

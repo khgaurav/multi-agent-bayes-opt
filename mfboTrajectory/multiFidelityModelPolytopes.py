@@ -428,13 +428,13 @@ def get_dataset_init_multi(name,
     x_dim = t_dim
     X_L1_0 = np.empty((0,x_dim))
     X_L1_1 = np.empty((0,x_dim))
-    X_L1 = np.empty((0,x_dim))
-    Y_L1 = np.empty(0)
+    X_L = np.empty((0,2*x_dim))
+    Y_L = np.empty(0)
     
     X_L2_0 = np.empty((0,x_dim))
     X_L2_1 = np.empty((0,x_dim))
-    X_L2 = np.empty((0,x_dim))
-    Y_L2 = np.empty(0)
+    # X_L2 = np.empty((0,x_dim))
+    # Y_L2 = np.empty(0)
     if sampling_mode == 0:
         sample_data = lambda N_sample: lhs(t_dim, N_sample)
     elif sampling_mode == 1:
@@ -461,13 +461,18 @@ def get_dataset_init_multi(name,
     while True:
         X_L1_t = sample_data(batch_size)
         X_L2_t = sample_data(batch_size)
+        # Ensure both X_L1 and X_L2 are of the same length
+        if X_L1_t.shape[0] > X_L2_t.shape[0]:
+            X_L1_t = X_L1_t[:X_L2_t.shape[0],:]
+        elif X_L1_t.shape[0] < X_L2_t.shape[0]:
+            X_L2_t = X_L2_t[:X_L1_t.shape[0],:]
         labels_low = low_fidelity(X_L1_t, X_L2_t, debug=False, multicore=flag_multicore)
         Y_L_t = 1.0*labels_low
         if np.where(Y_L_t == 0)[0].shape[0] > 0:
             X_L1_0 = np.concatenate((X_L1_0, X_L1_t[np.where(Y_L_t == 0)]))
             X_L2_0 = np.concatenate((X_L2_0, X_L2_t[np.where(Y_L_t == 0)]))
         if np.where(Y_L_t > 0)[0].shape[0] > 0:
-            X_L1_0 = np.concatenate((X_L1_0, X_L1_t[np.where(Y_L_t == 0)]))
+            X_L1_1 = np.concatenate((X_L1_1, X_L1_t[np.where(Y_L_t > 0)]))
             X_L2_1 = np.concatenate((X_L2_1, X_L2_t[np.where(Y_L_t > 0)]))
         print("N_L1_0: {}, N_L1_1: {} N_L2_0: {}, N_L2_1: {}".format(X_L1_0.shape[0],X_L1_1.shape[0], X_L2_0.shape[0],X_L2_1.shape[0]))
         if X_L1_0.shape[0] >= N_L/2 and X_L2_1.shape[0] >= N_L/2:
@@ -481,7 +486,8 @@ def get_dataset_init_multi(name,
         os.makedirs(directory)
     yamlFile = path_dataset_low
     yaml_out = open(yamlFile,"w")
-    yaml_out.write("alpha_sim: {}\n\n".format(alpha_sim))
+    yaml_out.write("alpha_sim1: {}\n\n".format(alpha_sim1))
+    yaml_out.write("alpha_sim2: {}\n\n".format(alpha_sim2))
     if np.all(alpha_robot != None):
         yaml_out.write("alpha_robot: {}\n\n".format(alpha_robot))
     yaml_out.write("X_L:\n")

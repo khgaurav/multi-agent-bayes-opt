@@ -161,7 +161,7 @@ if __name__ == "__main__":
                                     alpha_sim2, 
                                     low_fidelity_multi,
                                     t_dim, 
-                                    N_L=10,
+                                    N_L=1000,
                                     lb=lb, 
                                     ub=ub,
                                     sampling_mode=2, 
