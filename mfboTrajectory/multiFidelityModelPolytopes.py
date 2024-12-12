@@ -476,7 +476,7 @@ def get_dataset_init_multi(name,
             X_L2_1 = np.concatenate((X_L2_1, X_L2_t[np.where(Y_L_t > 0)]))
         print("N_L1_0: {}, N_L1_1: {} N_L2_0: {}, N_L2_1: {}".format(X_L1_0.shape[0],X_L1_1.shape[0], X_L2_0.shape[0],X_L2_1.shape[0]))
         if X_L1_0.shape[0] >= N_L/2 and X_L2_1.shape[0] >= N_L/2:
-            X_L = np.concatenate((X_L1_0[:np.int(N_L/2),:],X_L1_1[:np.int(N_L/2),:],X_L2_0[:np.int(N_L/2),:],X_L2_1[:np.int(N_L/2),:]))
+            X_L = np.vstack([np.hstack([X_L1_0[:np.int(N_L/2),:], X_L2_0[:np.int(N_L/2),:]]), np.hstack([X_L1_1[:np.int(N_L/2),:],X_L2_1[:np.int(N_L/2),:]])])
             Y_L = np.zeros(N_L)
             Y_L[np.int(N_L/2):] = 1
             break
