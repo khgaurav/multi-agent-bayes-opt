@@ -1236,7 +1236,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         for i in range(1,N_POLY):
             waypoints = np.append(waypoints,status[i*self.N_POINTS:i*self.N_POINTS+1,:],axis=0)
         waypoints = np.append(waypoints,status[-1:,:],axis=0)
-
+        
         mesh_data.append(
             go.Scatter3d(
                 x=waypoints[:,0], 
@@ -1252,7 +1252,166 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
         fig = go.Figure(data=mesh_data)
         fig.update_layout(scene_aspectmode='data')
         fig.show()
-    
+    def plot_trajectory_multi(self, t_set1, d_ordered1, plane_pos_set1, t_set2, d_ordered2, plane_pos_set2, flag_course_loop=True):
+        N_POLY1 = t_set1.shape[0]
+        N_wp1 = np.int(d_ordered1.shape[0]/self.N_DER)
+        flag_loop1 = True
+        if N_POLY1 != N_wp1:
+            flag_loop1 = False
+        
+        V_t1 = self.generate_sampling_matrix(t_set1, N=self.N_POINTS, der=0, endpoint=True)
+        status1 = V_t1.dot(d_ordered1)
+        
+        N_POLY2 = t_set2.shape[0]
+        N_wp2 = np.int(d_ordered2.shape[0]/self.N_DER)
+        flag_loop2 = True
+        if N_POLY2 != N_wp2:
+            flag_loop2 = False
+        
+        V_t2 = self.generate_sampling_matrix(t_set2, N=self.N_POINTS, der=0, endpoint=True)
+        status2 = V_t2.dot(d_ordered2)
+        
+        # Plot data
+        mesh_data = []
+        
+        for i in range(len(plane_pos_set1)):
+            for j in range(len(plane_pos_set1[i]["constraints_plane"])):
+                p_t = np.array(plane_pos_set1[i]["constraints_plane"][j])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='lightpink', opacity=0.20, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+            if len(plane_pos_set1[i]["input_plane"]) > 0:
+                p_t = np.array(plane_pos_set1[i]["input_plane"])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='green', opacity=0.20, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+            if len(plane_pos_set1[i]["output_plane"]) > 0:
+                p_t = np.array(plane_pos_set1[i]["output_plane"])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='blue', opacity=0.20, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+            for j in range(len(plane_pos_set1[i]["corner_plane"])):
+                p_t = np.array(plane_pos_set1[i]["corner_plane"][j])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='orange', opacity=0.40, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+        
+        for i in range(len(plane_pos_set2)):
+            for j in range(len(plane_pos_set2[i]["constraints_plane"])):
+                p_t = np.array(plane_pos_set2[i]["constraints_plane"][j])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='lightblue', opacity=0.20, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+            if len(plane_pos_set2[i]["input_plane"]) > 0:
+                p_t = np.array(plane_pos_set2[i]["input_plane"])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='purple', opacity=0.20, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+            if len(plane_pos_set2[i]["output_plane"]) > 0:
+                p_t = np.array(plane_pos_set2[i]["output_plane"])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='cyan', opacity=0.20, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+            for j in range(len(plane_pos_set2[i]["corner_plane"])):
+                p_t = np.array(plane_pos_set2[i]["corner_plane"][j])
+                ijk_t = np.array([[0,k+1,k+2] for k in range(p_t.shape[0]-2)])
+                mesh_t = go.Mesh3d(
+                    x=list(p_t[:,0]), y=list(p_t[:,1]), z=list(p_t[:,2]),
+                    color='yellow', opacity=0.40, showscale=True,
+                    i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
+                mesh_data.append(mesh_t)
+        
+        mesh_data.append(
+            go.Scatter3d(
+                x=status1[:,0], 
+                y=status1[:,1], 
+                z=status1[:,2],
+                mode='lines',
+                name="Drone 1 Trajectory",
+                line=dict(
+                    color='darkblue',
+                    width=2
+                )
+            )
+        )
+        
+        mesh_data.append(
+            go.Scatter3d(
+                x=status2[:,0], 
+                y=status2[:,1], 
+                z=status2[:,2],
+                mode='lines',
+                name="Drone 2 Trajectory",
+                line=dict(
+                    color='darkred',
+                    width=2
+                )
+            )
+        )
+        
+        waypoints1 = status1[0:1,:]
+        for i in range(1,N_POLY1):
+            waypoints1 = np.append(waypoints1,status1[i*self.N_POINTS:i*self.N_POINTS+1,:],axis=0)
+        waypoints1 = np.append(waypoints1,status1[-1:,:],axis=0)
+
+        mesh_data.append(
+            go.Scatter3d(
+                x=waypoints1[:,0], 
+                y=waypoints1[:,1], 
+                z=waypoints1[:,2],
+                mode='markers',
+                name="Drone 1 Waypoints",
+                marker=dict(
+                    size=4,
+                    color='green',
+                ),
+            )
+        )
+        
+        waypoints2 = status2[0:1,:]
+        for i in range(1,N_POLY2):
+            waypoints2 = np.append(waypoints2,status2[i*self.N_POINTS:i*self.N_POINTS+1,:],axis=0)
+        waypoints2 = np.append(waypoints2,status2[-1:,:],axis=0)
+
+        mesh_data.append(
+            go.Scatter3d(
+                x=waypoints2[:,0], 
+                y=waypoints2[:,1], 
+                z=waypoints2[:,2],
+                mode='markers',
+                name="Drone 2 Waypoints",
+                marker=dict(
+                    size=4,
+                    color='red',
+                ),
+            )
+        )
+        
+        fig = go.Figure(data=mesh_data)
+        fig.update_layout(scene_aspectmode='data')
+        fig.show()
+        
     def der_to_point(self, d_ordered, flag_print=False):
         N_points = np.int(d_ordered.shape[0]/self.N_DER)
         points = np.zeros((N_points,4))
