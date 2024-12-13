@@ -28,7 +28,7 @@ from gpytorch.mlls import VariationalELBO#, AddedLossTerm
 from pyTrajectoryUtils.pyTrajectoryUtils.utils import *
 from .models import *
 from .trajSampler import TrajSampler, gaussian_sampler
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class MFBOAgentBase():
     def __init__(self, *args, **kwargs):
         """
@@ -476,8 +476,8 @@ class ActiveMFDGP(MFBOAgentBase):
         self.batch_size = kwargs.get('gpu_batch_size', 256)
 
     def create_model(self, num_epochs=500):
-        self.train_x_L = torch.tensor(self.X_L).float()#.cuda()
-        self.train_y_L = torch.tensor(self.Y_L).float()#.cuda()
+        self.train_x_L = torch.tensor(self.X_L).float().to(device)
+        self.train_y_L = torch.tensor(self.Y_L).float().to(device)
         self.train_dataset_L = TensorDataset(self.train_x_L, self.train_y_L)
         self.train_loader_L = DataLoader(self.train_dataset_L, batch_size=self.batch_size, shuffle=True)
 
@@ -485,7 +485,7 @@ class ActiveMFDGP(MFBOAgentBase):
         train_y = [self.train_y_L]
         
         if not hasattr(self, 'clf'):
-            self.clf = MFDeepGPC(train_x, train_y, num_inducing=100)#.cuda() # CHANGED was 128
+            self.clf = MFDeepGPC(train_x, train_y, num_inducing=100).to(device) # CHANGED was 128
 
         optimizer = torch.optim.Adam([
             {'params': self.clf.parameters()},
@@ -512,7 +512,7 @@ class ActiveMFDGP(MFBOAgentBase):
 
                 with torch.no_grad():
                     self.X_cand = self.sample_data(self.N_cand)
-                    test_x = torch.tensor(self.X_cand).float()#.cuda()
+                    test_x = torch.tensor(self.X_cand).float().to(device)
                     test_dataset = TensorDataset(test_x)
                     test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
                     # test_output = self.clf(self.X_test, fidelity=1)
@@ -562,7 +562,7 @@ class ActiveMFDGP(MFBOAgentBase):
             self.X_cand = self.X_cand[(np.min(self.X_cand[:,:self.t_dim]-self.lb_i,axis=1)>=0) \
                                                      & (np.max(self.X_cand[:,:self.t_dim]-self.ub_i,axis=1)<=0),:]
         
-        test_x = torch.tensor(self.X_cand).float()#.cuda()
+        test_x = torch.tensor(self.X_cand).float().to(device)
         test_dataset = TensorDataset(test_x)
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -582,7 +582,7 @@ class ActiveMFDGP(MFBOAgentBase):
         return mean_L, var_L, prob_cand_L, prob_cand_L_mean
     
     def predict_single_point(self, X):
-        X_tensor = torch.tensor(X).float()#.cuda()
+        X_tensor = torch.tensor(X).float().to(device)
         with torch.no_grad():
             prob, mean, var, prob_mean = self.clf.predict_proba_MF(X_tensor, fidelity=1, C_L=self.C_L, beta=self.beta, return_all=True)
         return mean, var, prob[:, 1]

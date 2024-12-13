@@ -1352,63 +1352,7 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
                     i=ijk_t[:,0], j=ijk_t[:,1], k=ijk_t[:,2],)
                 mesh_data.append(mesh_t)
         
-        mesh_data.append(
-            go.Scatter3d(
-                x=status1[:,0], 
-                y=status1[:,1], 
-                z=status1[:,2],
-                mode='lines',
-                name="Drone 1 Trajectory",
-                line=dict(
-                    color='darkblue',
-                    width=2
-                )
-            )
-        )
-        
-        mesh_data.append(
-            go.Scatter3d(
-                x=status2[:,0], 
-                y=status2[:,1], 
-                z=status2[:,2],
-                mode='lines',
-                name="Drone 2 Trajectory",
-                line=dict(
-                    color='darkred',
-                    width=2
-                )
-            )
-        )
-
-        mesh_data.append(
-            go.Scatter3d(
-                x=status1[:,0][::50], 
-                y=status1[:,1][::50], 
-                z=status1[:,2][::50],
-                mode='markers',
-                name="Drone 1 Trajectory",
-                line=dict(
-                    color='darkblue',
-                    width=2
-                )
-            )
-        )
-        
-        mesh_data.append(
-            go.Scatter3d(
-                x=status2[:,0][::50], 
-                y=status2[:,1][::50], 
-                z=status2[:,2][::50],
-                mode='markers',
-                name="Drone 2 Trajectory",
-                line=dict(
-                    color='darkred',
-                    width=2
-                )
-            )
-        )
-
-        print(np.sum((status1[:,0:3] - status2[:,0:3])**2, axis=1))
+      
         # print(np.linalg.norm(pos1 - pos2, axis=1))
         # print(np.linalg.norm(pos1 - pos2, axis=1) < 0.1)
         waypoints1 = status1[0:1,:]
@@ -1449,7 +1393,55 @@ class MinSnapTrajectoryPolytopes(MinSnapTrajectory):
             )
         )
         
-        fig = go.Figure(data=mesh_data)
+        frames = []
+        for i in range(1, len(status1)):
+            frame_data = [
+            go.Scatter3d(
+                x=status1[:i,0], 
+                y=status1[:i,1], 
+                z=status1[:i,2],
+                # mode='markers',
+                name="Drone 1 Trajectory",
+                line=dict(
+                    color='green',
+                    width=3
+                ),
+                marker=dict(
+                    size=5,
+                    color='green',
+                ),
+            ),
+            go.Scatter3d(
+                x=status2[:i,0], 
+                y=status2[:i,1], 
+                z=status2[:i,2],
+                # mode='lines',
+                name="Drone 2 Trajectory",
+                line=dict(
+                    color='red',
+                    width=3
+                ),
+                marker=dict(
+                    size=5,
+                    color='red',
+                ),
+            )
+            ]
+            frames.append(go.Frame(data=frame_data, name=str(i)))
+        
+        fig = go.Figure(
+            data=mesh_data,
+            frames=frames,
+            layout=go.Layout(
+                updatemenus=[dict(
+                    type="buttons",
+                    buttons=[dict(label="Play",
+                                  method="animate",
+                                  args=[None, {"frame": {"duration": 5, "redraw": True},
+                                               "fromcurrent": True, "mode": "immediate"}])])]
+            )
+        )
+        
         fig.update_layout(scene_aspectmode='data')
         fig.show()
         
